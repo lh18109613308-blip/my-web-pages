@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>刘子的待办清单</title>
-    <link rel="stylesheet" href="styles.css?v=liuzi-20260625-1" />
+    <link rel="stylesheet" href="styles.css?v=liuzi-20260625-2" />
   </head>
   <body>
     <main class="app" aria-label="刘子的待办清单">
@@ -12,9 +12,10 @@
         <div>
           <p class="eyebrow">Lulu Todo</p>
           <h1>刘子的待办清单</h1>
-          <p class="subtitle">用标签、状态、时间和备份，把每件事稳稳放进噜噜的日程池。</p>
+          <p class="subtitle">拖动板块、点击标签、安排日程，让噜噜陪你把事情一件件完成。</p>
         </div>
-        <div class="mascot" aria-label="水豚噜噜">
+        <div class="mascot" id="mascot" aria-label="水豚噜噜">
+          <div class="confetti"></div>
           <div class="ear left"></div>
           <div class="ear right"></div>
           <div class="face"><div class="eyes"></div><div class="nose"></div><div class="mouth"></div></div>
@@ -23,18 +24,36 @@
       </section>
 
       <section class="layout-control panel" aria-label="布局调整">
-        <label>日历位置<select id="calendar-position"><option value="left">左侧</option><option value="right">右侧</option></select></label>
-        <label>日历宽度<input id="calendar-width" type="range" min="34" max="66" value="46" /></label>
-        <p>也可以拖动中间的小把手调整左右宽度。</p>
+        <button class="ghost" id="reset-layout" type="button">恢复默认布局</button>
+        <p>拖动每个板块标题栏调整位置，拖动右下角调整大小。布局会自动保存。</p>
       </section>
 
-      <section class="planner" id="planner">
-        <section class="panel calendar-panel" id="calendar-panel">
-          <div class="calendar-header">
-            <div>
-              <h2>日历安排</h2>
-              <p id="calendar-range">显示已安排时间的任务</p>
+      <section class="workspace" id="workspace" aria-label="自定义工作台">
+        <section class="panel widget board" data-widget="board">
+          <div class="widget-header board-header" data-drag-handle>
+            <div><h2>任务列表</h2><p id="task-count">0 项任务</p></div>
+            <div class="filter-stack">
+              <div class="filters" aria-label="状态筛选">
+                <button class="filter active" type="button" data-status-filter="all">全部</button>
+                <button class="filter" type="button" data-status-filter="not-started">未开始</button>
+                <button class="filter" type="button" data-status-filter="in-progress">进行中</button>
+                <button class="filter" type="button" data-status-filter="done">已完成</button>
+              </div>
+              <div class="filters" aria-label="优先级筛选">
+                <button class="filter active" type="button" data-priority-filter="all">全部优先级</button>
+                <button class="filter" type="button" data-priority-filter="high">紧急</button>
+                <button class="filter" type="button" data-priority-filter="medium">普通</button>
+                <button class="filter" type="button" data-priority-filter="low">轻松</button>
+              </div>
             </div>
+          </div>
+          <ul class="task-list" id="task-list" aria-live="polite"></ul>
+          <div class="resize-grip" data-resize-grip></div>
+        </section>
+
+        <section class="panel widget calendar-panel" data-widget="calendar">
+          <div class="widget-header calendar-header" data-drag-handle>
+            <div><h2>日历安排</h2><p id="calendar-range">显示已安排时间的任务</p></div>
             <div class="calendar-tools">
               <select id="calendar-mode" aria-label="日历范围">
                 <option value="week">一周</option>
@@ -50,56 +69,39 @@
             </div>
           </div>
           <div class="calendar" id="calendar"></div>
+          <div class="resize-grip" data-resize-grip></div>
         </section>
 
-        <div class="resize-handle" id="resize-handle" role="separator" aria-label="拖动调整日历和任务列表宽度"></div>
+        <aside class="panel widget composer" data-widget="composer">
+          <div class="widget-header panel-title" data-drag-handle>
+            <h2 id="form-title">添加任务</h2>
+            <button class="ghost hidden" id="cancel-edit" type="button">取消编辑</button>
+          </div>
+          <form id="task-form" class="task-form">
+            <label>待办事项<input id="task-input" type="text" maxlength="120" placeholder="例如：整理实验记录" required /></label>
+            <div class="form-grid">
+              <label>优先级<select id="priority-input"><option value="high">紧急</option><option value="medium" selected>普通</option><option value="low">轻松</option></select></label>
+              <label>状态<select id="status-input"><option value="not-started" selected>未开始</option><option value="in-progress">进行中</option><option value="done">已完成</option></select></label>
+            </div>
+            <label>安排时间<input id="time-input" type="datetime-local" /></label>
+            <button class="primary" type="submit" id="submit-button">添加到清单</button>
+          </form>
+          <div class="resize-grip" data-resize-grip></div>
+        </aside>
 
-        <section class="side-stack" id="side-stack">
-          <aside class="composer panel">
-            <div class="panel-title">
-              <h2 id="form-title">添加任务</h2>
-              <button class="ghost hidden" id="cancel-edit" type="button">取消编辑</button>
-            </div>
-            <form id="task-form" class="task-form">
-              <label>待办事项<input id="task-input" type="text" maxlength="120" placeholder="例如：整理实验记录" required /></label>
-              <div class="form-grid">
-                <label>优先级<select id="priority-input"><option value="high">紧急</option><option value="medium" selected>普通</option><option value="low">轻松</option></select></label>
-                <label>状态<select id="status-input"><option value="not-started" selected>未开始</option><option value="in-progress">进行中</option><option value="done">已完成</option></select></label>
-              </div>
-              <label>安排时间<input id="time-input" type="datetime-local" /></label>
-              <button class="primary" type="submit" id="submit-button">添加到清单</button>
-            </form>
-          </aside>
-
-          <section class="panel backup-panel">
-            <div class="panel-title compact">
-              <div>
-                <h2>储存与备份</h2>
-                <p id="last-saved">尚未保存</p>
-              </div>
-            </div>
-            <div class="backup-actions">
-              <button class="ghost" id="export-data" type="button">导出备份</button>
-              <button class="ghost" id="import-trigger" type="button">导入备份</button>
-              <input class="hidden" id="import-file" type="file" accept="application/json,.json" />
-            </div>
-          </section>
-
-          <section class="panel board">
-            <div class="board-header">
-              <div><h2>任务列表</h2><p id="task-count">0 项任务</p></div>
-              <div class="filters" aria-label="筛选任务">
-                <button class="filter active" type="button" data-filter="all">全部</button>
-                <button class="filter" type="button" data-filter="not-started">未开始</button>
-                <button class="filter" type="button" data-filter="in-progress">进行中</button>
-                <button class="filter" type="button" data-filter="done">已完成</button>
-              </div>
-            </div>
-            <ul class="task-list" id="task-list" aria-live="polite"></ul>
-          </section>
+        <section class="panel widget backup-panel" data-widget="backup">
+          <div class="widget-header panel-title compact" data-drag-handle>
+            <div><h2>储存与备份</h2><p id="last-saved">尚未保存</p></div>
+          </div>
+          <div class="backup-actions">
+            <button class="ghost" id="export-data" type="button">导出备份</button>
+            <button class="ghost" id="import-trigger" type="button">导入备份</button>
+            <input class="hidden" id="import-file" type="file" accept="application/json,.json" />
+          </div>
+          <div class="resize-grip" data-resize-grip></div>
         </section>
       </section>
     </main>
-    <script src="script.js?v=liuzi-20260625-1"></script>
+    <script src="script.js?v=liuzi-20260625-2"></script>
   </body>
 </html>
