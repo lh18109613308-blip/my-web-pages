@@ -1,49 +1,49 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>待办清单</title>
+    <title>水豚噜噜待办清单</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="app" aria-label="待办清单应用">
-      <section class="panel">
-        <header class="header">
-          <div>
-            <p class="eyebrow">Today</p>
-            <h1>待办清单</h1>
-          </div>
-          <div class="date" id="today"></div>
-        </header>
-
-        <form class="task-form" id="task-form">
-          <input
-            id="task-input"
-            type="text"
-            autocomplete="off"
-            maxlength="80"
-            placeholder="添加一个新任务"
-            aria-label="添加一个新任务"
-          />
-          <button type="submit" aria-label="添加任务">+</button>
-        </form>
-
-        <div class="toolbar" aria-label="筛选任务">
-          <button class="filter active" type="button" data-filter="all">全部</button>
-          <button class="filter" type="button" data-filter="active">进行中</button>
-          <button class="filter" type="button" data-filter="done">已完成</button>
+    <main class="app" aria-label="水豚噜噜待办清单">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Lulu Todo</p>
+          <h1>水豚噜噜待办清单</h1>
+          <p class="subtitle">给任务加上优先级、状态和时间，让噜噜陪你慢慢安排。</p>
         </div>
-
-        <ul class="task-list" id="task-list" aria-live="polite"></ul>
-
-        <footer class="footer">
-          <span id="task-count">0 项任务</span>
-          <button id="clear-done" type="button">清除已完成</button>
-        </footer>
+        <div class="mascot" aria-label="水豚噜噜">
+          <div class="ear left"></div>
+          <div class="ear right"></div>
+          <div class="face"><div class="eyes"></div><div class="nose"></div><div class="mouth"></div></div>
+          <div class="leaf"></div>
+        </div>
+      </section>
+      <section class="layout">
+        <aside class="composer panel">
+          <div class="panel-title"><h2 id="form-title">添加任务</h2><button class="ghost hidden" id="cancel-edit" type="button">取消编辑</button></div>
+          <form id="task-form" class="task-form">
+            <label>待办事项<input id="task-input" type="text" maxlength="120" placeholder="例如：整理实验记录" required /></label>
+            <div class="form-grid">
+              <label>优先级<select id="priority-input"><option value="high">紧急</option><option value="medium" selected>普通</option><option value="low">轻松</option></select></label>
+              <label>状态<select id="status-input"><option value="not-started" selected>未开始</option><option value="in-progress">进行中</option><option value="done">已完成</option></select></label>
+            </div>
+            <label>安排时间<input id="time-input" type="datetime-local" /></label>
+            <button class="primary" type="submit" id="submit-button">添加到清单</button>
+          </form>
+        </aside>
+        <section class="panel board">
+          <div class="board-header"><div><h2>任务列表</h2><p id="task-count">0 项任务</p></div><div class="filters" aria-label="筛选任务"><button class="filter active" type="button" data-filter="all">全部</button><button class="filter" type="button" data-filter="not-started">未开始</button><button class="filter" type="button" data-filter="in-progress">进行中</button><button class="filter" type="button" data-filter="done">已完成</button></div></div>
+          <ul class="task-list" id="task-list" aria-live="polite"></ul>
+        </section>
+      </section>
+      <section class="panel calendar-panel">
+        <div class="calendar-header"><div><h2>日历安排</h2><p>只显示已经添加时间的任务。</p></div><div class="calendar-actions"><button class="ghost" id="prev-week" type="button">上一周</button><button class="ghost" id="this-week" type="button">本周</button><button class="ghost" id="next-week" type="button">下一周</button></div></div>
+        <div class="calendar" id="calendar"></div>
       </section>
     </main>
-
     <script src="script.js"></script>
   </body>
 </html>
