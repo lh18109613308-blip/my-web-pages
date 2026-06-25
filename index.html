@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>我的网页</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        min-height: 100vh;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        color: #20242a;
+        background: #f4f1ea;
+        font-family: Inter, "Microsoft YaHei", "PingFang SC", system-ui, -apple-system, sans-serif;
+      }
+      main { width: min(100%, 760px); }
+      h1 { margin: 0 0 10px; font-size: clamp(36px, 8vw, 64px); line-height: 1; letter-spacing: 0; }
+      p { margin: 0 0 26px; color: #657085; font-size: 17px; }
+      .links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+      a {
+        min-height: 150px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 22px;
+        border: 1px solid #d8d1c5;
+        border-radius: 8px;
+        color: inherit;
+        background: #fffdf8;
+        text-decoration: none;
+        box-shadow: 0 16px 36px rgba(42, 37, 28, 0.1);
+      }
+      a:hover { border-color: #2f6f73; }
+      strong { display: block; font-size: 24px; }
+      span { color: #657085; }
+      @media (max-width: 640px) { .links { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>我的网页</h1>
+      <p>选择要打开的页面。</p>
+      <div class="links">
+        <a href="todo-list/">
+          <strong>待办清单</strong>
+          <span>添加、筛选和保存日常任务</span>
+        </a>
+        <a href="antibody-manager/">
+          <strong>抗体管理</strong>
+          <span>打开抗体库存和借用管理页面</span>
+        </a>
+      </div>
+    </main>
+  </body>
+</html>
