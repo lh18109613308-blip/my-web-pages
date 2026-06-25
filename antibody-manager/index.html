@@ -5,101 +5,215 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>抗体管理</title>
     <style>
+      :root {
+        --bg: #f7f3ec;
+        --panel: #ffffff;
+        --text: #1b2430;
+        --muted: #657085;
+        --line: #dce3ee;
+        --brand: #1f7a8c;
+        --brand-dark: #14596a;
+        --ok: #1f8a5f;
+        --warn: #b7791f;
+        --bad: #b83232;
+        --soft: #eaf3f5;
+        --shadow: 0 16px 36px rgba(22, 34, 51, 0.1);
+      }
+
       * { box-sizing: border-box; }
+
       body {
-        margin: 0;
         min-height: 100vh;
-        color: #1b2430;
-        background: #f7f3ec;
+        margin: 0;
+        color: var(--text);
+        background: linear-gradient(180deg, rgba(31, 122, 140, 0.08), transparent 280px), var(--bg);
         font-family: Inter, "Microsoft YaHei", "PingFang SC", system-ui, -apple-system, sans-serif;
       }
-      main { width: min(100%, 1120px); margin: 0 auto; padding: 28px 16px; }
-      header { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
-      h1 { margin: 0; font-size: clamp(32px, 6vw, 54px); line-height: 1; letter-spacing: 0; }
-      .back { color: #1f7a8c; font-weight: 700; text-decoration: none; }
-      .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
-      .card, .panel { border: 1px solid #dce3ee; border-radius: 8px; background: #fff; box-shadow: 0 16px 36px rgba(22, 34, 51, 0.08); }
-      .card { padding: 18px; }
-      .label { margin: 0 0 8px; color: #657085; font-size: 13px; }
-      .value { margin: 0; font-size: 30px; font-weight: 800; }
+
+      button, input, select { font: inherit; }
+      button { border: 0; cursor: pointer; }
+
+      .app { width: min(100%, 1180px); margin: 0 auto; padding: 28px 16px; }
+      .topbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 22px; }
+      h1 { margin: 0; font-size: clamp(34px, 6vw, 58px); line-height: 1; letter-spacing: 0; }
+      .subtitle { margin: 8px 0 0; color: var(--muted); }
+      .home { color: var(--brand); font-weight: 800; text-decoration: none; }
+      .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
+      .stat, .panel { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); box-shadow: var(--shadow); }
+      .stat { padding: 18px; }
+      .stat span { display: block; color: var(--muted); font-size: 13px; font-weight: 700; }
+      .stat strong { display: block; margin-top: 8px; font-size: 32px; }
+      .workspace { display: grid; grid-template-columns: 340px 1fr; gap: 16px; }
       .panel { overflow: hidden; }
-      .tools { display: grid; grid-template-columns: 1fr 160px; gap: 12px; padding: 16px; border-bottom: 1px solid #dce3ee; }
-      input, select { width: 100%; height: 42px; padding: 0 12px; border: 1px solid #dce3ee; border-radius: 8px; font: inherit; }
-      table { width: 100%; border-collapse: collapse; }
+      .panel-header { padding: 16px; border-bottom: 1px solid var(--line); }
+      .panel-header h2 { margin: 0; font-size: 20px; }
+      .form { display: grid; gap: 12px; padding: 16px; }
+      label { display: grid; gap: 6px; color: var(--muted); font-size: 13px; font-weight: 700; }
+      input, select { width: 100%; height: 42px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--text); background: #fff; outline: none; }
+      input:focus, select:focus { border-color: var(--brand); box-shadow: 0 0 0 4px rgba(31, 122, 140, 0.14); }
+      .primary { height: 44px; border-radius: 8px; color: #fff; background: var(--brand); font-weight: 800; }
+      .primary:hover { background: var(--brand-dark); }
+      .tools { display: grid; grid-template-columns: 1fr 150px; gap: 12px; padding: 16px; border-bottom: 1px solid var(--line); }
+      .table-wrap { overflow-x: auto; }
+      table { width: 100%; min-width: 760px; border-collapse: collapse; }
       th, td { padding: 14px 16px; border-bottom: 1px solid #edf1f6; text-align: left; }
-      th { color: #657085; font-size: 13px; }
-      .status { display: inline-block; padding: 4px 9px; border-radius: 999px; font-size: 12px; font-weight: 800; }
-      .ok { color: #17613f; background: #e8f6ef; }
-      .low { color: #8a4f00; background: #fff2d8; }
-      .out { color: #9b2c2c; background: #ffe6e6; }
-      @media (max-width: 760px) { .grid { grid-template-columns: repeat(2, 1fr); } header { align-items: start; flex-direction: column; } .tools { grid-template-columns: 1fr; } table { min-width: 720px; } .panel { overflow-x: auto; } }
+      th { color: var(--muted); font-size: 13px; }
+      .tag { display: inline-block; padding: 4px 9px; border-radius: 999px; font-size: 12px; font-weight: 800; }
+      .ok { color: var(--ok); background: #e8f6ef; }
+      .low { color: var(--warn); background: #fff2d8; }
+      .borrowed { color: var(--bad); background: #ffe6e6; }
+      .actions { display: flex; gap: 8px; }
+      .small { min-width: 54px; height: 32px; padding: 0 10px; border-radius: 8px; color: var(--brand); background: var(--soft); font-weight: 800; }
+      .danger { color: var(--bad); background: #ffeaea; }
+      .empty { padding: 42px 16px; color: var(--muted); text-align: center; }
+
+      @media (max-width: 900px) {
+        .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .workspace { grid-template-columns: 1fr; }
+      }
+
+      @media (max-width: 560px) {
+        .topbar { align-items: flex-start; flex-direction: column; }
+        .tools { grid-template-columns: 1fr; }
+      }
     </style>
   </head>
   <body>
-    <main>
-      <header>
+    <main class="app">
+      <header class="topbar">
         <div>
           <h1>抗体管理</h1>
+          <p class="subtitle">记录库存、位置、低库存和借用状态。</p>
         </div>
-        <a class="back" href="../">返回首页</a>
+        <a class="home" href="../">返回首页</a>
       </header>
 
-      <section class="grid" aria-label="统计信息">
-        <div class="card"><p class="label">抗体总数</p><p class="value" id="total">0</p></div>
-        <div class="card"><p class="label">可用</p><p class="value" id="available">0</p></div>
-        <div class="card"><p class="label">低库存</p><p class="value" id="low">0</p></div>
-        <div class="card"><p class="label">借出</p><p class="value" id="borrowed">0</p></div>
+      <section class="stats" aria-label="统计信息">
+        <div class="stat"><span>抗体总数</span><strong id="total">0</strong></div>
+        <div class="stat"><span>可用</span><strong id="available">0</strong></div>
+        <div class="stat"><span>低库存</span><strong id="low">0</strong></div>
+        <div class="stat"><span>借出</span><strong id="borrowed">0</strong></div>
       </section>
 
-      <section class="panel">
-        <div class="tools">
-          <input id="search" type="search" placeholder="搜索名称、货号或位置" />
-          <select id="filter">
-            <option value="all">全部状态</option>
-            <option value="available">可用</option>
-            <option value="low">低库存</option>
-            <option value="borrowed">借出</option>
-          </select>
-        </div>
-        <table>
-          <thead>
-            <tr><th>名称</th><th>克隆号</th><th>荧光</th><th>位置</th><th>余量</th><th>状态</th></tr>
-          </thead>
-          <tbody id="rows"></tbody>
-        </table>
+      <section class="workspace">
+        <aside class="panel">
+          <div class="panel-header"><h2>新增抗体</h2></div>
+          <form class="form" id="antibody-form">
+            <label>名称<input id="name" required placeholder="例如 CD3" /></label>
+            <label>克隆号<input id="clone" required placeholder="例如 UCHT1" /></label>
+            <label>荧光<input id="fluor" required placeholder="例如 FITC" /></label>
+            <label>位置<input id="location" required placeholder="例如 4C 冰箱 A2" /></label>
+            <label>余量<input id="amount" required type="number" min="0" value="50" /></label>
+            <label>低库存阈值<input id="threshold" required type="number" min="0" value="25" /></label>
+            <button class="primary" type="submit">添加抗体</button>
+          </form>
+        </aside>
+
+        <section class="panel">
+          <div class="tools">
+            <input id="search" type="search" placeholder="搜索名称、克隆号、荧光或位置" />
+            <select id="filter">
+              <option value="all">全部状态</option>
+              <option value="available">可用</option>
+              <option value="low">低库存</option>
+              <option value="borrowed">借出</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>名称</th><th>克隆号</th><th>荧光</th><th>位置</th><th>余量</th><th>状态</th><th>操作</th></tr>
+              </thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </div>
+        </section>
       </section>
     </main>
 
     <script>
-      const antibodies = [
-        { name: "CD3", clone: "UCHT1", fluor: "FITC", location: "4C 冰箱 A2", amount: 68, status: "available" },
-        { name: "CD4", clone: "RPA-T4", fluor: "PE", location: "4C 冰箱 A2", amount: 18, status: "low" },
-        { name: "CD8a", clone: "RPA-T8", fluor: "APC", location: "4C 冰箱 B1", amount: 42, status: "available" },
-        { name: "CD19", clone: "HIB19", fluor: "BV421", location: "借出给 Lin", amount: 30, status: "borrowed" },
-        { name: "CD45", clone: "HI30", fluor: "PerCP", location: "4C 冰箱 C3", amount: 75, status: "available" }
+      const storageKey = "antibody-manager.items.v2";
+      const seedItems = [
+        { id: "ab-cd3", name: "CD3", clone: "UCHT1", fluor: "FITC", location: "4C 冰箱 A2", amount: 68, threshold: 25, borrowed: false },
+        { id: "ab-cd4", name: "CD4", clone: "RPA-T4", fluor: "PE", location: "4C 冰箱 A2", amount: 18, threshold: 25, borrowed: false },
+        { id: "ab-cd8", name: "CD8a", clone: "RPA-T8", fluor: "APC", location: "4C 冰箱 B1", amount: 42, threshold: 25, borrowed: false },
+        { id: "ab-cd19", name: "CD19", clone: "HIB19", fluor: "BV421", location: "借出给 Lin", amount: 30, threshold: 25, borrowed: true },
+        { id: "ab-cd45", name: "CD45", clone: "HI30", fluor: "PerCP", location: "4C 冰箱 C3", amount: 75, threshold: 25, borrowed: false }
       ];
-      const labels = { available: ["可用", "ok"], low: ["低库存", "low"], borrowed: ["借出", "out"] };
+      let items = JSON.parse(localStorage.getItem(storageKey) || "null") || seedItems;
+      const form = document.querySelector("#antibody-form");
       const rows = document.querySelector("#rows");
       const search = document.querySelector("#search");
       const filter = document.querySelector("#filter");
-      function render() {
-        const term = search.value.trim().toLowerCase();
-        const state = filter.value;
-        const visible = antibodies.filter(item => {
-          const haystack = `${item.name} ${item.clone} ${item.fluor} ${item.location}`.toLowerCase();
-          return haystack.includes(term) && (state === "all" || item.status === state);
-        });
-        rows.innerHTML = visible.map(item => {
-          const [text, cls] = labels[item.status];
-          return `<tr><td>${item.name}</td><td>${item.clone}</td><td>${item.fluor}</td><td>${item.location}</td><td>${item.amount}</td><td><span class="status ${cls}">${text}</span></td></tr>`;
-        }).join("");
-        document.querySelector("#total").textContent = antibodies.length;
-        document.querySelector("#available").textContent = antibodies.filter(item => item.status === "available").length;
-        document.querySelector("#low").textContent = antibodies.filter(item => item.status === "low").length;
-        document.querySelector("#borrowed").textContent = antibodies.filter(item => item.status === "borrowed").length;
+
+      function createId() {
+        if (crypto.randomUUID) return crypto.randomUUID();
+        return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
       }
-      search.addEventListener("input", render);
-      filter.addEventListener("change", render);
+      function statusOf(item) {
+        if (item.borrowed) return ["borrowed", "借出"];
+        if (Number(item.amount) <= Number(item.threshold)) return ["low", "低库存"];
+        return ["ok", "可用"];
+      }
+      function save() { localStorage.setItem(storageKey, JSON.stringify(items)); }
+      function renderStats() {
+        document.querySelector("#total").textContent = items.length;
+        document.querySelector("#available").textContent = items.filter((item) => statusOf(item)[0] === "ok").length;
+        document.querySelector("#low").textContent = items.filter((item) => statusOf(item)[0] === "low").length;
+        document.querySelector("#borrowed").textContent = items.filter((item) => statusOf(item)[0] === "borrowed").length;
+      }
+      function renderRows() {
+        const term = search.value.trim().toLowerCase();
+        const selected = filter.value;
+        const visible = items.filter((item) => {
+          const [status] = statusOf(item);
+          const normalized = status === "ok" ? "available" : status;
+          const text = `${item.name} ${item.clone} ${item.fluor} ${item.location}`.toLowerCase();
+          return text.includes(term) && (selected === "all" || selected === normalized);
+        });
+        if (visible.length === 0) {
+          rows.innerHTML = `<tr><td class="empty" colspan="7">没有匹配的抗体</td></tr>`;
+          return;
+        }
+        rows.innerHTML = visible.map((item) => {
+          const [status, label] = statusOf(item);
+          return `<tr><td>${item.name}</td><td>${item.clone}</td><td>${item.fluor}</td><td>${item.location}</td><td>${item.amount}</td><td><span class="tag ${status}">${label}</span></td><td><div class="actions"><button class="small" type="button" data-action="toggle" data-id="${item.id}">${item.borrowed ? "归还" : "借出"}</button><button class="small danger" type="button" data-action="delete" data-id="${item.id}">删除</button></div></td></tr>`;
+        }).join("");
+      }
+      function render() { renderStats(); renderRows(); }
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        items.unshift({
+          id: createId(),
+          name: document.querySelector("#name").value.trim(),
+          clone: document.querySelector("#clone").value.trim(),
+          fluor: document.querySelector("#fluor").value.trim(),
+          location: document.querySelector("#location").value.trim(),
+          amount: Number(document.querySelector("#amount").value),
+          threshold: Number(document.querySelector("#threshold").value),
+          borrowed: false
+        });
+        form.reset();
+        document.querySelector("#amount").value = 50;
+        document.querySelector("#threshold").value = 25;
+        save();
+        render();
+      });
+      rows.addEventListener("click", (event) => {
+        const button = event.target.closest("button");
+        if (!button) return;
+        const id = button.dataset.id;
+        if (button.dataset.action === "toggle") {
+          items = items.map((item) => item.id === id ? { ...item, borrowed: !item.borrowed, location: item.borrowed ? "4C 冰箱待确认" : "借出待记录" } : item);
+        }
+        if (button.dataset.action === "delete") {
+          items = items.filter((item) => item.id !== id);
+        }
+        save();
+        render();
+      });
+      search.addEventListener("input", renderRows);
+      filter.addEventListener("change", renderRows);
       render();
     </script>
   </body>
