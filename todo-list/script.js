@@ -19,11 +19,12 @@ const workspace = document.querySelector("#workspace");
 const mascot = document.querySelector("#mascot");
 const widgets = [...document.querySelectorAll("[data-widget]")];
 const barrageLayer = document.querySelector("#barrage-layer");
-const barrageMessages = ["刘子提醒你加油干！", "刘子提醒你注意劳逸结合", "刘子提醒你该想他了💗", "刘子说今天也要闪闪发光", "刘子提醒你完成一个就奖励自己一下"];
+const barrageMessages = ["刘子提醒你加油干！", "刘子提醒你注意劳逸结合", "刘子提醒你该想他了💗", "刘子说今天也要闪闪发光", "刘子提醒你完成一个就奖励自己一下", "刘子说先完成最重要的一件事"];
 
 const storageKey = "todo-list.tasks.v2";
 const metaKey = "todo-list.meta.v2";
 const legacyKey = "todo-list.tasks";
+const layoutVersion = 3;
 const priorityOrder = ["high", "medium", "low"];
 const statusOrder = ["not-started", "in-progress", "done"];
 const priorityLabels = { high: "紧急", medium: "普通", low: "轻松" };
@@ -72,20 +73,21 @@ function renderSavedState() {
 
 function defaultLayout() {
   const width = Math.max(workspace.clientWidth, 980);
+  const calendarWidth = Math.round(width * 0.36);
   return {
-    board: { x: 16, y: 16, w: Math.round(width * 0.56), h: 430 },
-    calendar: { x: Math.round(width * 0.59), y: 16, w: Math.round(width * 0.39) - 16, h: 620 },
-    composer: { x: 16, y: 466, w: Math.round(width * 0.33), h: 330 },
-    backup: { x: Math.round(width * 0.36), y: 466, w: Math.round(width * 0.2), h: 190 },
+    calendar: { x: 16, y: 16, w: calendarWidth, h: 560 },
+    board: { x: calendarWidth + 32, y: 16, w: width - calendarWidth - 48, h: 392 },
+    composer: { x: calendarWidth + 32, y: 428, w: Math.round((width - calendarWidth - 64) * 0.6), h: 270 },
+    backup: { x: calendarWidth + 48 + Math.round((width - calendarWidth - 64) * 0.6), y: 428, w: Math.round((width - calendarWidth - 64) * 0.4), h: 190 },
   };
 }
 
 function getLayout() {
   const meta = readMeta();
-  return meta.widgetLayout || defaultLayout();
+  return meta.layoutVersion === layoutVersion && meta.widgetLayout ? meta.widgetLayout : defaultLayout();
 }
 
-function saveLayout(layout) { writeMeta({ widgetLayout: layout }); }
+function saveLayout(layout) { writeMeta({ layoutVersion, widgetLayout: layout }); }
 
 function applyLayout() {
   if (window.matchMedia("(max-width: 900px)").matches) return;
@@ -137,7 +139,7 @@ function renderTasks() {
   const openCount = tasks.filter((task) => task.status !== "done").length;
   count.textContent = `${openCount} 项待推进 · 共 ${tasks.length} 项`;
   if (!items.length) {
-    const empty = document.createElement("li"); empty.className = "empty"; empty.textContent = tasks.length ? "这个筛选下暂时没有任务" : "噜噜还没有收到任务"; list.appendChild(empty); return;
+    const empty = document.createElement("li"); empty.className = "empty"; empty.textContent = tasks.length ? "这个筛选下暂时没有任务" : "小女孩还在等你的第一项任务"; list.appendChild(empty); return;
   }
   items.forEach((task) => {
     const item = document.createElement("li");
@@ -218,7 +220,7 @@ function launchBarrage() {
 }
 function updateTask(id, patch) { const before = tasks.find((task) => task.id === id); tasks = tasks.map((task) => task.id === id ? { ...task, ...patch, updatedAt: new Date().toISOString() } : task); saveTasks(); renderTasks(); renderCalendar(); if (before?.status !== "done" && patch.status === "done") celebrate(id); }
 function shiftCalendar(direction) { const mode = calendarMode.value; const amount = mode === "week" ? 7 * direction : mode === "quarter" ? 3 * direction : mode === "year" ? 12 * direction : direction; anchorDate = mode === "week" ? addDays(anchorDate, amount) : addMonths(anchorDate, amount); renderCalendar(); }
-function exportBackup() { const payload = { app: "lulu-todo", version: 2, exportedAt: new Date().toISOString(), tasks }; const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `liuzi-todo-backup-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); }
+function exportBackup() { const payload = { app: "liuzi-todo", version: 2, exportedAt: new Date().toISOString(), tasks }; const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `liuzi-todo-backup-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); }
 function importBackup(file) { const reader = new FileReader(); reader.addEventListener("load", () => { try { const parsed = JSON.parse(reader.result); const importedTasks = normalizeTasks(Array.isArray(parsed) ? parsed : parsed.tasks); if (!importedTasks.length) throw new Error("没有可导入的任务"); if (!confirm(`将导入 ${importedTasks.length} 项任务，并替换当前清单。继续吗？`)) return; tasks = importedTasks; saveTasks(); resetForm(); render(); } catch (error) { alert(`导入失败：${error.message}`); } finally { importFile.value = ""; } }); reader.readAsText(file, "utf-8"); }
 
 function startWidgetMove(event, mode) {
@@ -256,7 +258,7 @@ document.querySelector("#next-period").addEventListener("click", () => shiftCale
 document.querySelector("#current-period").addEventListener("click", () => { anchorDate = new Date(); renderCalendar(); });
 document.querySelector("#export-data").addEventListener("click", exportBackup);
 document.querySelector("#import-trigger").addEventListener("click", () => importFile.click());
-document.querySelector("#reset-layout").addEventListener("click", () => { writeMeta({ widgetLayout: defaultLayout() }); applyLayout(); });
+document.querySelector("#reset-layout").addEventListener("click", () => { writeMeta({ layoutVersion, widgetLayout: defaultLayout() }); applyLayout(); });
 importFile.addEventListener("change", () => { if (importFile.files[0]) importBackup(importFile.files[0]); });
 widgets.forEach((widget) => { widget.querySelector("[data-drag-handle]").addEventListener("pointerdown", (event) => { if (event.target.closest("button, select, input")) return; startWidgetMove(event, "drag"); }); widget.querySelector("[data-resize-grip]").addEventListener("pointerdown", (event) => startWidgetMove(event, "resize")); });
 window.addEventListener("pointermove", updateWidgetMove);
