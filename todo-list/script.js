@@ -18,6 +18,8 @@ const importFile = document.querySelector("#import-file");
 const workspace = document.querySelector("#workspace");
 const mascot = document.querySelector("#mascot");
 const widgets = [...document.querySelectorAll("[data-widget]")];
+const barrageLayer = document.querySelector("#barrage-layer");
+const barrageMessages = ["刘子提醒你加油干！", "刘子提醒你注意劳逸结合", "刘子提醒你该想他了💗", "刘子说今天也要闪闪发光", "刘子提醒你完成一个就奖励自己一下"];
 
 const storageKey = "todo-list.tasks.v2";
 const metaKey = "todo-list.meta.v2";
@@ -141,7 +143,7 @@ function renderTasks() {
     const item = document.createElement("li");
     item.className = `task ${task.status === "done" ? "done" : ""}`;
     item.dataset.id = task.id;
-    item.innerHTML = `<div class="task-main"><p class="task-title">${escapeHtml(task.text)}</p><div class="badges"><button class="badge tag-button priority-${task.priority}" type="button" data-action="priority">${priorityLabels[task.priority]}</button><button class="badge tag-button status-${task.status}" type="button" data-action="status">${statusLabels[task.status]}</button><span class="badge time-badge">${task.scheduledAt ? formatDateTime(task.scheduledAt) : "未安排时间"}</span></div></div><div class="task-actions"><button class="icon-btn" type="button" data-action="edit">编辑</button><button class="icon-btn danger" type="button" data-action="delete">删除</button></div>`;
+    item.innerHTML = `<div class="task-avatar ${task.priority}" aria-hidden="true"></div><div class="task-main"><p class="task-title">${escapeHtml(task.text)}</p><div class="badges"><button class="badge tag-button priority-${task.priority}" type="button" data-action="priority">${priorityLabels[task.priority]}</button><button class="badge tag-button status-${task.status}" type="button" data-action="status">${statusLabels[task.status]}</button><span class="badge time-badge">${task.scheduledAt ? formatDateTime(task.scheduledAt) : "未安排时间"}</span></div></div><div class="task-actions"><button class="icon-btn" type="button" data-action="edit">编辑</button><button class="icon-btn danger" type="button" data-action="delete">删除</button></div>`;
     list.appendChild(item);
   });
 }
@@ -190,8 +192,31 @@ function render() { renderSavedState(); applyLayout(); renderTasks(); renderCale
 function escapeHtml(value) { return String(value).replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]); }
 function startEdit(task) { editingId = task.id; taskInput.value = task.text; priorityInput.value = task.priority; statusInput.value = task.status; timeInput.value = toInputValue(task.scheduledAt); formTitle.textContent = "编辑任务"; submitButton.textContent = "保存修改"; cancelEdit.classList.remove("hidden"); taskInput.focus(); }
 function cycleValue(value, options) { return options[(options.indexOf(value) + 1) % options.length]; }
-function celebrate() { mascot.classList.remove("celebrate"); void mascot.offsetWidth; mascot.classList.add("celebrate"); window.setTimeout(() => mascot.classList.remove("celebrate"), 950); }
-function updateTask(id, patch) { const before = tasks.find((task) => task.id === id); tasks = tasks.map((task) => task.id === id ? { ...task, ...patch, updatedAt: new Date().toISOString() } : task); saveTasks(); renderTasks(); renderCalendar(); if (before?.status !== "done" && patch.status === "done") celebrate(); }
+function celebrate(taskId = null) {
+  mascot.classList.remove("celebrate");
+  void mascot.offsetWidth;
+  mascot.classList.add("celebrate");
+  if (taskId) {
+    const avatar = document.querySelector(`.task[data-id="${taskId}"] .task-avatar`);
+    if (avatar) {
+      avatar.classList.remove("party");
+      void avatar.offsetWidth;
+      avatar.classList.add("party");
+    }
+  }
+  window.setTimeout(() => mascot.classList.remove("celebrate"), 950);
+}
+
+function launchBarrage() {
+  const message = barrageMessages[Math.floor(Math.random() * barrageMessages.length)];
+  const item = document.createElement("div");
+  item.className = "barrage";
+  item.textContent = message;
+  item.style.top = `${Math.floor(18 + Math.random() * 58)}vh`;
+  barrageLayer.appendChild(item);
+  window.setTimeout(() => item.remove(), 7200);
+}
+function updateTask(id, patch) { const before = tasks.find((task) => task.id === id); tasks = tasks.map((task) => task.id === id ? { ...task, ...patch, updatedAt: new Date().toISOString() } : task); saveTasks(); renderTasks(); renderCalendar(); if (before?.status !== "done" && patch.status === "done") celebrate(id); }
 function shiftCalendar(direction) { const mode = calendarMode.value; const amount = mode === "week" ? 7 * direction : mode === "quarter" ? 3 * direction : mode === "year" ? 12 * direction : direction; anchorDate = mode === "week" ? addDays(anchorDate, amount) : addMonths(anchorDate, amount); renderCalendar(); }
 function exportBackup() { const payload = { app: "lulu-todo", version: 2, exportedAt: new Date().toISOString(), tasks }; const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `liuzi-todo-backup-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); }
 function importBackup(file) { const reader = new FileReader(); reader.addEventListener("load", () => { try { const parsed = JSON.parse(reader.result); const importedTasks = normalizeTasks(Array.isArray(parsed) ? parsed : parsed.tasks); if (!importedTasks.length) throw new Error("没有可导入的任务"); if (!confirm(`将导入 ${importedTasks.length} 项任务，并替换当前清单。继续吗？`)) return; tasks = importedTasks; saveTasks(); resetForm(); render(); } catch (error) { alert(`导入失败：${error.message}`); } finally { importFile.value = ""; } }); reader.readAsText(file, "utf-8"); }
@@ -219,7 +244,7 @@ function updateWidgetMove(event) {
 }
 function endWidgetMove(event) { if (!activeMove) return; activeMove.widget.classList.remove("dragging"); try { event.target.releasePointerCapture(event.pointerId); } catch {} activeMove = null; }
 
-form.addEventListener("submit", (event) => { event.preventDefault(); const text = taskInput.value.trim(); if (!text) return; const payload = { text, priority: priorityInput.value, status: statusInput.value, scheduledAt: normalizeDateInput(timeInput.value) }; const completed = payload.status === "done"; if (editingId) { const before = tasks.find((task) => task.id === editingId); tasks = tasks.map((task) => task.id === editingId ? { ...task, ...payload, updatedAt: new Date().toISOString() } : task); if (before?.status !== "done" && completed) celebrate(); } else { tasks.unshift({ id: createId(), ...payload, createdAt: new Date().toISOString(), updatedAt: "" }); if (completed) celebrate(); } saveTasks(); resetForm(); render(); });
+form.addEventListener("submit", (event) => { event.preventDefault(); const text = taskInput.value.trim(); if (!text) return; const payload = { text, priority: priorityInput.value, status: statusInput.value, scheduledAt: normalizeDateInput(timeInput.value) }; const completed = payload.status === "done"; if (editingId) { const before = tasks.find((task) => task.id === editingId); tasks = tasks.map((task) => task.id === editingId ? { ...task, ...payload, updatedAt: new Date().toISOString() } : task); if (before?.status !== "done" && completed) celebrate(editingId); } else { tasks.unshift({ id: createId(), ...payload, createdAt: new Date().toISOString(), updatedAt: "" }); if (completed) celebrate(); launchBarrage(); } saveTasks(); resetForm(); render(); });
 cancelEdit.addEventListener("click", resetForm);
 list.addEventListener("click", (event) => { const button = event.target.closest("button"); const item = event.target.closest(".task"); if (!button || !item) return; const task = tasks.find((entry) => entry.id === item.dataset.id); if (!task) return; if (button.dataset.action === "edit") startEdit(task); if (button.dataset.action === "priority") updateTask(task.id, { priority: cycleValue(task.priority, priorityOrder) }); if (button.dataset.action === "status") updateTask(task.id, { status: cycleValue(task.status, statusOrder) }); if (button.dataset.action === "delete") { if (!confirm("确定删除这项任务吗？")) return; tasks = tasks.filter((entry) => entry.id !== task.id); saveTasks(); if (editingId === task.id) resetForm(); render(); } });
 calendar.addEventListener("click", (event) => { const button = event.target.closest(".calendar-task, .summary-task"); if (!button) return; const task = tasks.find((entry) => entry.id === button.dataset.id); if (task) startEdit(task); });
@@ -239,3 +264,5 @@ window.addEventListener("pointerup", endWidgetMove);
 window.addEventListener("resize", applyLayout);
 
 render();
+
+
