@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>待办清单</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app" aria-label="待办清单应用">
+      <section class="panel">
+        <header class="header">
+          <div>
+            <p class="eyebrow">Today</p>
+            <h1>待办清单</h1>
+          </div>
+          <div class="date" id="today"></div>
+        </header>
+
+        <form class="task-form" id="task-form">
+          <input
+            id="task-input"
+            type="text"
+            autocomplete="off"
+            maxlength="80"
+            placeholder="添加一个新任务"
+            aria-label="添加一个新任务"
+          />
+          <button type="submit" aria-label="添加任务">+</button>
+        </form>
+
+        <div class="toolbar" aria-label="筛选任务">
+          <button class="filter active" type="button" data-filter="all">全部</button>
+          <button class="filter" type="button" data-filter="active">进行中</button>
+          <button class="filter" type="button" data-filter="done">已完成</button>
+        </div>
+
+        <ul class="task-list" id="task-list" aria-live="polite"></ul>
+
+        <footer class="footer">
+          <span id="task-count">0 项任务</span>
+          <button id="clear-done" type="button">清除已完成</button>
+        </footer>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
