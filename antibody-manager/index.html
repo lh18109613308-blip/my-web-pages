@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>抗体管理</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: #1b2430;
+        background: #f7f3ec;
+        font-family: Inter, "Microsoft YaHei", "PingFang SC", system-ui, -apple-system, sans-serif;
+      }
+      main { width: min(100%, 1120px); margin: 0 auto; padding: 28px 16px; }
+      header { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+      h1 { margin: 0; font-size: clamp(32px, 6vw, 54px); line-height: 1; letter-spacing: 0; }
+      .back { color: #1f7a8c; font-weight: 700; text-decoration: none; }
+      .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+      .card, .panel { border: 1px solid #dce3ee; border-radius: 8px; background: #fff; box-shadow: 0 16px 36px rgba(22, 34, 51, 0.08); }
+      .card { padding: 18px; }
+      .label { margin: 0 0 8px; color: #657085; font-size: 13px; }
+      .value { margin: 0; font-size: 30px; font-weight: 800; }
+      .panel { overflow: hidden; }
+      .tools { display: grid; grid-template-columns: 1fr 160px; gap: 12px; padding: 16px; border-bottom: 1px solid #dce3ee; }
+      input, select { width: 100%; height: 42px; padding: 0 12px; border: 1px solid #dce3ee; border-radius: 8px; font: inherit; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 14px 16px; border-bottom: 1px solid #edf1f6; text-align: left; }
+      th { color: #657085; font-size: 13px; }
+      .status { display: inline-block; padding: 4px 9px; border-radius: 999px; font-size: 12px; font-weight: 800; }
+      .ok { color: #17613f; background: #e8f6ef; }
+      .low { color: #8a4f00; background: #fff2d8; }
+      .out { color: #9b2c2c; background: #ffe6e6; }
+      @media (max-width: 760px) { .grid { grid-template-columns: repeat(2, 1fr); } header { align-items: start; flex-direction: column; } .tools { grid-template-columns: 1fr; } table { min-width: 720px; } .panel { overflow-x: auto; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>抗体管理</h1>
+        </div>
+        <a class="back" href="../">返回首页</a>
+      </header>
+
+      <section class="grid" aria-label="统计信息">
+        <div class="card"><p class="label">抗体总数</p><p class="value" id="total">0</p></div>
+        <div class="card"><p class="label">可用</p><p class="value" id="available">0</p></div>
+        <div class="card"><p class="label">低库存</p><p class="value" id="low">0</p></div>
+        <div class="card"><p class="label">借出</p><p class="value" id="borrowed">0</p></div>
+      </section>
+
+      <section class="panel">
+        <div class="tools">
+          <input id="search" type="search" placeholder="搜索名称、货号或位置" />
+          <select id="filter">
+            <option value="all">全部状态</option>
+            <option value="available">可用</option>
+            <option value="low">低库存</option>
+            <option value="borrowed">借出</option>
+          </select>
+        </div>
+        <table>
+          <thead>
+            <tr><th>名称</th><th>克隆号</th><th>荧光</th><th>位置</th><th>余量</th><th>状态</th></tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </section>
+    </main>
+
+    <script>
+      const antibodies = [
+        { name: "CD3", clone: "UCHT1", fluor: "FITC", location: "4C 冰箱 A2", amount: 68, status: "available" },
+        { name: "CD4", clone: "RPA-T4", fluor: "PE", location: "4C 冰箱 A2", amount: 18, status: "low" },
+        { name: "CD8a", clone: "RPA-T8", fluor: "APC", location: "4C 冰箱 B1", amount: 42, status: "available" },
+        { name: "CD19", clone: "HIB19", fluor: "BV421", location: "借出给 Lin", amount: 30, status: "borrowed" },
+        { name: "CD45", clone: "HI30", fluor: "PerCP", location: "4C 冰箱 C3", amount: 75, status: "available" }
+      ];
+      const labels = { available: ["可用", "ok"], low: ["低库存", "low"], borrowed: ["借出", "out"] };
+      const rows = document.querySelector("#rows");
+      const search = document.querySelector("#search");
+      const filter = document.querySelector("#filter");
+      function render() {
+        const term = search.value.trim().toLowerCase();
+        const state = filter.value;
+        const visible = antibodies.filter(item => {
+          const haystack = `${item.name} ${item.clone} ${item.fluor} ${item.location}`.toLowerCase();
+          return haystack.includes(term) && (state === "all" || item.status === state);
+        });
+        rows.innerHTML = visible.map(item => {
+          const [text, cls] = labels[item.status];
+          return `<tr><td>${item.name}</td><td>${item.clone}</td><td>${item.fluor}</td><td>${item.location}</td><td>${item.amount}</td><td><span class="status ${cls}">${text}</span></td></tr>`;
+        }).join("");
+        document.querySelector("#total").textContent = antibodies.length;
+        document.querySelector("#available").textContent = antibodies.filter(item => item.status === "available").length;
+        document.querySelector("#low").textContent = antibodies.filter(item => item.status === "low").length;
+        document.querySelector("#borrowed").textContent = antibodies.filter(item => item.status === "borrowed").length;
+      }
+      search.addEventListener("input", render);
+      filter.addEventListener("change", render);
+      render();
+    </script>
+  </body>
+</html>
