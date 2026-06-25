@@ -14,10 +14,16 @@ const calendarMode = document.querySelector("#calendar-mode");
 const calendarRange = document.querySelector("#calendar-range");
 const lastSaved = document.querySelector("#last-saved");
 const importFile = document.querySelector("#import-file");
+const planner = document.querySelector("#planner");
+const resizeHandle = document.querySelector("#resize-handle");
+const calendarPosition = document.querySelector("#calendar-position");
+const calendarWidth = document.querySelector("#calendar-width");
 
 const storageKey = "todo-list.tasks.v2";
 const metaKey = "todo-list.meta.v2";
 const legacyKey = "todo-list.tasks";
+const priorityOrder = ["high", "medium", "low"];
+const statusOrder = ["not-started", "in-progress", "done"];
 const priorityLabels = { high: "紧急", medium: "普通", low: "轻松" };
 const statusLabels = { "not-started": "未开始", "in-progress": "进行中", done: "已完成" };
 const weekDays = ["一", "二", "三", "四", "五", "六", "日"];
@@ -26,11 +32,11 @@ let currentFilter = "all";
 let editingId = null;
 let anchorDate = new Date();
 let tasks = loadTasks();
+let resizing = false;
 
 function loadTasks() {
   const saved = localStorage.getItem(storageKey);
   if (saved) return normalizeTasks(JSON.parse(saved));
-
   const legacy = JSON.parse(localStorage.getItem(legacyKey) || "[]");
   return normalizeTasks(legacy.map((task) => ({
     id: task.id || createId(),
@@ -47,8 +53,8 @@ function normalizeTasks(input) {
   return input.filter((task) => task && task.text).map((task) => ({
     id: task.id || createId(),
     text: String(task.text),
-    priority: ["high", "medium", "low"].includes(task.priority) ? task.priority : "medium",
-    status: ["not-started", "in-progress", "done"].includes(task.status) ? task.status : "not-started",
+    priority: priorityOrder.includes(task.priority) ? task.priority : "medium",
+    status: statusOrder.includes(task.status) ? task.status : "not-started",
     scheduledAt: task.scheduledAt || "",
     createdAt: task.createdAt || new Date().toISOString(),
     updatedAt: task.updatedAt || "",
@@ -81,6 +87,21 @@ function renderSavedState() {
     return;
   }
   lastSaved.textContent = `上次保存：${formatDateTime(meta.lastSavedAt)}`;
+}
+
+function applyLayoutSettings() {
+  const meta = readMeta();
+  const width = Number(meta.calendarWidth || 46);
+  const position = meta.calendarPosition || "left";
+  calendarWidth.value = width;
+  calendarPosition.value = position;
+  planner.style.setProperty("--calendar-width", `${width}%`);
+  planner.classList.toggle("calendar-right", position === "right");
+}
+
+function saveLayoutSettings() {
+  writeMeta({ calendarWidth: Number(calendarWidth.value), calendarPosition: calendarPosition.value });
+  applyLayoutSettings();
 }
 
 function normalizeDateInput(value) {
@@ -154,7 +175,6 @@ function renderTasks() {
   const items = visibleTasks();
   const openCount = tasks.filter((task) => task.status !== "done").length;
   count.textContent = `${openCount} 项待推进 · 共 ${tasks.length} 项`;
-
   if (items.length === 0) {
     const empty = document.createElement("li");
     empty.className = "empty";
@@ -162,7 +182,6 @@ function renderTasks() {
     list.appendChild(empty);
     return;
   }
-
   items.forEach((task) => {
     const item = document.createElement("li");
     item.className = `task ${task.status === "done" ? "done" : ""}`;
@@ -171,14 +190,13 @@ function renderTasks() {
       <div class="task-main">
         <p class="task-title">${escapeHtml(task.text)}</p>
         <div class="badges">
-          <span class="badge priority-${task.priority}">${priorityLabels[task.priority]}</span>
-          <span class="badge status-${task.status}">${statusLabels[task.status]}</span>
+          <button class="badge tag-button priority-${task.priority}" type="button" data-action="priority">${priorityLabels[task.priority]}</button>
+          <button class="badge tag-button status-${task.status}" type="button" data-action="status">${statusLabels[task.status]}</button>
           <span class="badge time-badge">${task.scheduledAt ? formatDateTime(task.scheduledAt) : "未安排时间"}</span>
         </div>
       </div>
       <div class="task-actions">
         <button class="icon-btn" type="button" data-action="edit">编辑</button>
-        <button class="icon-btn" type="button" data-action="next">推进</button>
         <button class="icon-btn danger" type="button" data-action="delete">删除</button>
       </div>
     `;
@@ -198,7 +216,9 @@ function renderCalendar() {
   const mode = calendarMode.value;
   const sections = getMonthSequence();
   calendar.className = `calendar ${mode}`;
-  calendar.innerHTML = sections.map((section) => section.type === "week" ? renderWeek(section.start) : renderMonth(section.start)).join("");
+  calendar.innerHTML = mode === "quarter" || mode === "year"
+    ? renderSummary(sections, mode)
+    : sections.map((section) => section.type === "week" ? renderWeek(section.start) : renderMonth(section.start)).join("");
   calendarRange.textContent = getCalendarRangeText(sections, mode);
 }
 
@@ -229,9 +249,29 @@ function renderDay(day) {
   return `
     <div class="day${todayClass}">
       <div class="day-head"><span class="day-date">${day.getDate()}</span>${dayTasks.length ? `<span class="day-count">${dayTasks.length} 项</span>` : ""}</div>
-      ${dayTasks.map((task) => `<button class="calendar-task ${task.priority}" type="button" data-id="${task.id}"><span class="calendar-time">${formatDateTime(task.scheduledAt)}</span>${escapeHtml(task.text)}</button>`).join("")}
+      ${dayTasks.slice(0, 4).map((task) => `<button class="calendar-task ${task.priority}" type="button" data-id="${task.id}"><span class="calendar-time">${formatDateTime(task.scheduledAt)}</span>${escapeHtml(task.text)}</button>`).join("")}
+      ${dayTasks.length > 4 ? `<span class="day-count">还有 ${dayTasks.length - 4} 项</span>` : ""}
     </div>
   `;
+}
+
+function renderSummary(sections, mode) {
+  const months = sections.map((section) => {
+    const start = section.start;
+    const end = addMonths(start, 1);
+    const monthTasks = tasks
+      .filter((task) => task.scheduledAt && new Date(task.scheduledAt) >= start && new Date(task.scheduledAt) < end)
+      .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+    return `
+      <section class="summary-card">
+        <div class="summary-title"><span>${formatMonthTitle(start)}</span><span>${monthTasks.length} 项</span></div>
+        <div class="summary-body">
+          ${monthTasks.length ? monthTasks.map((task) => `<button class="summary-task" type="button" data-id="${task.id}"><span>${formatDateTime(task.scheduledAt)}</span><span>${escapeHtml(task.text)}</span><span class="summary-dot ${task.priority}"></span></button>`).join("") : `<span class="summary-empty">这个月还没有安排</span>`}
+        </div>
+      </section>
+    `;
+  }).join("");
+  return `<div class="summary-list ${mode}">${months}</div>`;
 }
 
 function getCalendarRangeText(sections, mode) {
@@ -240,14 +280,14 @@ function getCalendarRangeText(sections, mode) {
     const end = addDays(start, 6);
     return `${start.getMonth() + 1}/${start.getDate()} - ${end.getMonth() + 1}/${end.getDate()} · 已安排时间的任务`;
   }
-  if (mode === "year") return `${anchorDate.getFullYear()} 年 · 已安排时间的任务`;
-  const first = sections[0].start;
-  const last = sections[sections.length - 1].start;
-  return sections.length === 1 ? `${formatMonthTitle(first)} · 已安排时间的任务` : `${formatMonthTitle(first)} - ${formatMonthTitle(last)} · 已安排时间的任务`;
+  if (mode === "year") return `${anchorDate.getFullYear()} 年摘要 · 按月份查看安排`;
+  if (mode === "quarter") return `${formatMonthTitle(sections[0].start)} - ${formatMonthTitle(sections[2].start)} · 三个月摘要`;
+  return `${formatMonthTitle(sections[0].start)} · 已安排时间的任务`;
 }
 
 function render() {
   renderSavedState();
+  applyLayoutSettings();
   renderTasks();
   renderCalendar();
 }
@@ -268,10 +308,15 @@ function startEdit(task) {
   taskInput.focus();
 }
 
-function nextStatus(status) {
-  if (status === "not-started") return "in-progress";
-  if (status === "in-progress") return "done";
-  return "not-started";
+function cycleValue(value, options) {
+  return options[(options.indexOf(value) + 1) % options.length];
+}
+
+function updateTask(id, patch) {
+  tasks = tasks.map((task) => task.id === id ? { ...task, ...patch, updatedAt: new Date().toISOString() } : task);
+  saveTasks();
+  renderTasks();
+  renderCalendar();
 }
 
 function shiftCalendar(direction) {
@@ -288,7 +333,7 @@ function exportBackup() {
   const link = document.createElement("a");
   const stamp = new Date().toISOString().slice(0, 10);
   link.href = url;
-  link.download = `lulu-todo-backup-${stamp}.json`;
+  link.download = `liuzi-todo-backup-${stamp}.json`;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -312,6 +357,15 @@ function importBackup(file) {
     }
   });
   reader.readAsText(file, "utf-8");
+}
+
+function updateWidthFromPointer(clientX) {
+  const bounds = planner.getBoundingClientRect();
+  const position = calendarPosition.value;
+  const raw = position === "right" ? ((bounds.right - clientX) / bounds.width) * 100 : ((clientX - bounds.left) / bounds.width) * 100;
+  const next = Math.max(34, Math.min(66, Math.round(raw)));
+  calendarWidth.value = next;
+  saveLayoutSettings();
 }
 
 form.addEventListener("submit", (event) => {
@@ -338,11 +392,8 @@ list.addEventListener("click", (event) => {
   const task = tasks.find((entry) => entry.id === item.dataset.id);
   if (!task) return;
   if (button.dataset.action === "edit") startEdit(task);
-  if (button.dataset.action === "next") {
-    tasks = tasks.map((entry) => (entry.id === task.id ? { ...entry, status: nextStatus(entry.status), updatedAt: new Date().toISOString() } : entry));
-    saveTasks();
-    render();
-  }
+  if (button.dataset.action === "priority") updateTask(task.id, { priority: cycleValue(task.priority, priorityOrder) });
+  if (button.dataset.action === "status") updateTask(task.id, { status: cycleValue(task.status, statusOrder) });
   if (button.dataset.action === "delete") {
     if (!confirm("确定删除这项任务吗？")) return;
     tasks = tasks.filter((entry) => entry.id !== task.id);
@@ -353,7 +404,7 @@ list.addEventListener("click", (event) => {
 });
 
 calendar.addEventListener("click", (event) => {
-  const button = event.target.closest(".calendar-task");
+  const button = event.target.closest(".calendar-task, .summary-task");
   if (!button) return;
   const task = tasks.find((entry) => entry.id === button.dataset.id);
   if (task) startEdit(task);
@@ -374,5 +425,11 @@ document.querySelector("#current-period").addEventListener("click", () => { anch
 document.querySelector("#export-data").addEventListener("click", exportBackup);
 document.querySelector("#import-trigger").addEventListener("click", () => importFile.click());
 importFile.addEventListener("change", () => { if (importFile.files[0]) importBackup(importFile.files[0]); });
+calendarPosition.addEventListener("change", saveLayoutSettings);
+calendarWidth.addEventListener("input", saveLayoutSettings);
+resizeHandle.addEventListener("pointerdown", (event) => { resizing = true; resizeHandle.classList.add("dragging"); resizeHandle.setPointerCapture(event.pointerId); });
+resizeHandle.addEventListener("pointermove", (event) => { if (resizing) updateWidthFromPointer(event.clientX); });
+resizeHandle.addEventListener("pointerup", (event) => { resizing = false; resizeHandle.classList.remove("dragging"); resizeHandle.releasePointerCapture(event.pointerId); });
+resizeHandle.addEventListener("pointercancel", () => { resizing = false; resizeHandle.classList.remove("dragging"); });
 
 render();
