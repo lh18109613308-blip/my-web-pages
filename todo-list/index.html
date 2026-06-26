@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>刘子的待办清单</title>
-    <link rel="stylesheet" href="styles.css?v=liuzi-assets-20260626-1" />
+    <link rel="stylesheet" href="styles.css?v=liuzi-unified-20260626-2" />
   </head>
   <body>
     <main class="app" aria-label="刘子的待办清单">
@@ -15,8 +15,9 @@
           <span class="petal" aria-hidden="true">✿</span>
         </div>
         <div class="top-cheer">💗 刘子提醒你加油干！</div>
+        <div class="beijing-clock" id="beijing-clock" aria-live="polite">北京时间 --:--:--</div>
         <div class="top-actions" aria-label="快捷按钮">
-          <button class="round-btn" type="button" aria-label="通知">♡<span>3</span></button>
+          <button class="round-btn theme-cycle" id="theme-cycle" type="button" aria-label="切换色调">♡<span id="theme-label">粉</span></button>
           <button class="round-btn" id="settings-open" type="button" aria-label="设置">⚙</button>
           <img class="mini-girl-img" src="assets/characters/sprites/girl-12.png" alt="小女孩头像" />
         </div>
@@ -39,6 +40,17 @@
           <label class="setting-row"><span>完成任务时播放角色庆祝动画</span><input id="setting-motion" type="checkbox" checked /></label>
           <label class="setting-row"><span>添加任务时显示刘子弹幕提醒</span><input id="setting-barrage" type="checkbox" checked /></label>
           <label class="setting-row"><span>紧凑任务表格</span><input id="setting-compact" type="checkbox" /></label>
+          <section class="settings-backup" aria-label="储存与备份">
+            <div>
+              <h3>储存与备份</h3>
+              <p id="last-saved">尚未保存</p>
+            </div>
+            <div class="settings-backup-actions">
+              <button class="ghost" id="export-data" type="button">导出备份</button>
+              <button class="ghost" id="import-trigger" type="button">导入备份</button>
+              <input class="hidden" id="import-file" type="file" accept="application/json,.json" />
+            </div>
+          </section>
           <div class="settings-actions">
             <button class="ghost" id="clear-completed" type="button">清理已完成</button>
             <button class="primary" value="close" type="submit">保存设置</button>
@@ -98,6 +110,8 @@
               </div>
             </div>
           </div>
+          <button class="calendar-tree" id="calendar-tree" type="button" aria-label="点击春日花树洒落花瓣"></button>
+          <div class="calendar-petal-layer" id="calendar-petal-layer" aria-hidden="true"></div>
           <div class="calendar" id="calendar"></div>
           <div class="resize-grip" data-resize-grip></div>
         </section>
@@ -133,26 +147,14 @@
               <label>优先级<select id="priority-input"><option value="high">紧急</option><option value="medium" selected>普通</option><option value="low">轻松</option></select></label>
               <label>状态<select id="status-input"><option value="not-started" selected>未开始</option><option value="in-progress">进行中</option><option value="done">已完成</option></select></label>
             </div>
-            <label>安排时间<input id="time-input" type="datetime-local" /></label>
+            <label>安排时间<span class="datetime-field"><input id="time-input" type="datetime-local" /><span class="datetime-placeholder">选择日期和时间</span></span></label>
             <button class="primary" type="submit" id="submit-button">添加到清单</button>
           </form>
           <div class="resize-grip" data-resize-grip></div>
         </aside>
-
-        <section class="panel widget backup-panel" data-widget="backup">
-          <div class="widget-header panel-title compact" data-drag-handle>
-            <div><h2>储存与备份</h2><p id="last-saved">尚未保存</p></div>
-          </div>
-          <div class="backup-actions">
-            <button class="ghost" id="export-data" type="button">导出备份</button>
-            <button class="ghost" id="import-trigger" type="button">导入备份</button>
-            <input class="hidden" id="import-file" type="file" accept="application/json,.json" />
-          </div>
-          <div class="resize-grip" data-resize-grip></div>
-        </section>
       </section>
     </main>
-    <script src="script.js?v=liuzi-assets-20260626-1"></script>
+    <script src="script.js?v=liuzi-unified-20260626-2"></script>
   </body>
 </html>
 

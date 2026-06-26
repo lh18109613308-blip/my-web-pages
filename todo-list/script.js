@@ -14,11 +14,16 @@ const cancelEdit = document.querySelector("#cancel-edit");
 const calendar = document.querySelector("#calendar");
 const calendarMode = document.querySelector("#calendar-mode");
 const calendarRange = document.querySelector("#calendar-range");
+const calendarTree = document.querySelector("#calendar-tree");
+const calendarPetalLayer = document.querySelector("#calendar-petal-layer");
 const lastSaved = document.querySelector("#last-saved");
 const importFile = document.querySelector("#import-file");
 const newTaskButton = document.querySelector("#new-task");
 const settingsDialog = document.querySelector("#settings-dialog");
 const settingsOpen = document.querySelector("#settings-open");
+const themeCycle = document.querySelector("#theme-cycle");
+const themeLabel = document.querySelector("#theme-label");
+const beijingClock = document.querySelector("#beijing-clock");
 const settingDecor = document.querySelector("#setting-decor");
 const settingMotion = document.querySelector("#setting-motion");
 const settingBarrage = document.querySelector("#setting-barrage");
@@ -38,12 +43,16 @@ const storageKey = "todo-list.tasks.v2";
 const metaKey = "todo-list.meta.v2";
 const legacyKey = "todo-list.tasks";
 const settingsKey = "todo-list.settings.v1";
-const layoutVersion = 4;
+const notifiedKey = "todo-list.notifiedReminders.v1";
+const layoutVersion = 5;
 const priorityOrder = ["high", "medium", "low"];
 const statusOrder = ["not-started", "in-progress", "done"];
+const themeOrder = ["pink", "blue", "yellow"];
+const themeLabels = { pink: "粉", blue: "蓝", yellow: "黄" };
 const priorityLabels = { high: "紧急", medium: "普通", low: "轻松" };
 const statusLabels = { "not-started": "未开始", "in-progress": "进行中", done: "已完成" };
 const weekDays = ["一", "二", "三", "四", "五", "六", "日"];
+const reminderLeadMs = 10 * 60 * 1000;
 const characterAssets = {
   girl: {
     idle: "assets/characters/sprites/girl-12.png",
@@ -79,6 +88,7 @@ let anchorDate = new Date();
 let tasks = loadTasks();
 let activeMove = null;
 let settings = loadSettings();
+let notifiedReminders = loadNotifiedReminders();
 
 function loadTasks() {
   const saved = localStorage.getItem(storageKey);
@@ -88,12 +98,25 @@ function loadTasks() {
 }
 
 function loadSettings() {
-  const defaults = { decor: true, motion: true, barrage: true, compact: false };
+  const defaults = { decor: true, motion: true, barrage: true, compact: false, theme: "pink" };
   try {
-    return { ...defaults, ...JSON.parse(localStorage.getItem(settingsKey) || "{}") };
+    const saved = { ...defaults, ...JSON.parse(localStorage.getItem(settingsKey) || "{}") };
+    return { ...saved, theme: themeOrder.includes(saved.theme) ? saved.theme : "pink" };
   } catch {
     return defaults;
   }
+}
+
+function loadNotifiedReminders() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(notifiedKey) || "[]"));
+  } catch {
+    return new Set();
+  }
+}
+
+function saveNotifiedReminders() {
+  localStorage.setItem(notifiedKey, JSON.stringify([...notifiedReminders].slice(-200)));
 }
 
 function saveSettings() {
@@ -101,6 +124,7 @@ function saveSettings() {
 }
 
 function applySettings() {
+  document.body.dataset.theme = settings.theme;
   document.body.classList.toggle("hide-decor", !settings.decor);
   document.body.classList.toggle("reduce-character-motion", !settings.motion);
   document.body.classList.toggle("compact-table", settings.compact);
@@ -108,6 +132,7 @@ function applySettings() {
   settingMotion.checked = settings.motion;
   settingBarrage.checked = settings.barrage;
   settingCompact.checked = settings.compact;
+  themeLabel.textContent = themeLabels[settings.theme];
 }
 
 function normalizeTasks(input) {
@@ -134,21 +159,20 @@ function saveTasks() { localStorage.setItem(storageKey, JSON.stringify(tasks)); 
 function renderSavedState() {
   const meta = readMeta();
   lastSaved.textContent = meta.lastSavedAt ? `上次保存：${formatDateTime(meta.lastSavedAt)}` : tasks.length ? "已从本机读取，尚未再次保存" : "尚未保存";
-  document.querySelector(".backup-actions")?.setAttribute("data-last", meta.lastSavedAt ? formatDateTime(meta.lastSavedAt) : "尚未保存");
+  document.querySelector(".settings-backup-actions")?.setAttribute("data-last", meta.lastSavedAt ? formatDateTime(meta.lastSavedAt) : "尚未保存");
 }
 
 function defaultLayout() {
   const width = Math.max(workspace.clientWidth, 980);
-  const leftWidth = Math.max(320, Math.round(width * 0.28));
-  const rightStart = leftWidth + 44;
+  const leftWidth = Math.max(330, Math.round(width * 0.31));
+  const rightStart = leftWidth + 28;
   const rightWidth = width - rightStart - 16;
-  const sceneWidth = Math.round(rightWidth * 0.62);
+  const sceneWidth = Math.round(rightWidth * 0.58);
   return {
-    calendar: { x: 16, y: 16, w: leftWidth, h: 404 },
-    backup: { x: 16, y: 438, w: leftWidth, h: 350 },
-    board: { x: rightStart, y: 16, w: rightWidth, h: 390 },
-    scene: { x: rightStart, y: 422, w: sceneWidth, h: 366 },
-    composer: { x: rightStart + sceneWidth + 16, y: 422, w: rightWidth - sceneWidth - 16, h: 366 },
+    calendar: { x: 16, y: 16, w: leftWidth, h: 760 },
+    board: { x: rightStart, y: 16, w: rightWidth, h: 386 },
+    scene: { x: rightStart, y: 418, w: sceneWidth, h: 358 },
+    composer: { x: rightStart + sceneWidth + 16, y: 418, w: rightWidth - sceneWidth - 16, h: 358 },
   };
 }
 
@@ -187,6 +211,7 @@ function constrainRect(rect, maxW, maxH) {
 function normalizeDateInput(value) { return value ? new Date(value).toISOString() : ""; }
 function toInputValue(iso) { if (!iso) return ""; const date = new Date(iso); const offset = date.getTimezoneOffset() * 60000; return new Date(date.getTime() - offset).toISOString().slice(0, 16); }
 function formatDateTime(iso) { return new Intl.DateTimeFormat("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)); }
+function formatReminderTime(iso) { return new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)); }
 function formatMonthTitle(date) { return new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "long" }).format(date); }
 function startOfDay(date) { const base = new Date(date); base.setHours(0, 0, 0, 0); return base; }
 function startOfWeek(date) { const base = startOfDay(date); const day = base.getDay() || 7; base.setDate(base.getDate() - day + 1); return base; }
@@ -207,7 +232,7 @@ function visibleTasks() {
 }
 
 function resetForm() {
-  editingId = null; form.reset(); priorityInput.value = "medium"; statusInput.value = "not-started"; formTitle.textContent = "编辑任务"; submitButton.textContent = "保存到清单"; cancelEdit.classList.add("hidden");
+  editingId = null; form.reset(); priorityInput.value = "medium"; statusInput.value = "not-started"; formTitle.textContent = "编辑任务"; submitButton.textContent = "保存到清单"; cancelEdit.classList.add("hidden"); syncTimePlaceholder();
 }
 
 function renderTasks() {
@@ -268,9 +293,9 @@ function getCalendarRangeText(sections, mode) {
   return `${formatMonthTitle(sections[0].start)} · 已安排时间的任务`;
 }
 
-function render() { applySettings(); renderSavedState(); applyLayout(); renderTasks(); renderCalendar(); }
+function render() { applySettings(); renderSavedState(); applyLayout(); renderTasks(); renderCalendar(); syncTimePlaceholder(); }
 function escapeHtml(value) { return String(value).replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]); }
-function startEdit(task) { editingId = task.id; taskInput.value = task.text; priorityInput.value = task.priority; statusInput.value = task.status; timeInput.value = toInputValue(task.scheduledAt); formTitle.textContent = "编辑任务"; submitButton.textContent = "保存修改"; cancelEdit.classList.remove("hidden"); taskInput.focus(); }
+function startEdit(task) { editingId = task.id; taskInput.value = task.text; priorityInput.value = task.priority; statusInput.value = task.status; timeInput.value = toInputValue(task.scheduledAt); formTitle.textContent = "编辑任务"; submitButton.textContent = "保存修改"; cancelEdit.classList.remove("hidden"); syncTimePlaceholder(); taskInput.focus(); }
 function cycleValue(value, options) { return options[(options.indexOf(value) + 1) % options.length]; }
 function celebrate(taskId = null) {
   if (!settings.motion) return;
@@ -301,9 +326,9 @@ function celebrate(taskId = null) {
   }, 1200);
 }
 
-function launchBarrage() {
+function launchBarrage(customMessage = "") {
   if (!settings.barrage) return;
-  const message = barrageMessages[Math.floor(Math.random() * barrageMessages.length)];
+  const message = customMessage || barrageMessages[Math.floor(Math.random() * barrageMessages.length)];
   const item = document.createElement("div");
   item.className = "barrage";
   item.textContent = message;
@@ -311,10 +336,61 @@ function launchBarrage() {
   barrageLayer.appendChild(item);
   window.setTimeout(() => item.remove(), 7200);
 }
-function updateTask(id, patch) { const before = tasks.find((task) => task.id === id); tasks = tasks.map((task) => task.id === id ? { ...task, ...patch, updatedAt: new Date().toISOString() } : task); saveTasks(); renderTasks(); renderCalendar(); if (before?.status !== "done" && patch.status === "done") celebrate(id); }
+function updateTask(id, patch) { const before = tasks.find((task) => task.id === id); tasks = tasks.map((task) => task.id === id ? { ...task, ...patch, updatedAt: new Date().toISOString() } : task); saveTasks(); renderTasks(); renderCalendar(); checkReminders(); if (before?.status !== "done" && patch.status === "done") celebrate(id); }
 function shiftCalendar(direction) { const mode = calendarMode.value; const amount = mode === "week" ? 7 * direction : mode === "quarter" ? 3 * direction : mode === "year" ? 12 * direction : direction; anchorDate = mode === "week" ? addDays(anchorDate, amount) : addMonths(anchorDate, amount); renderCalendar(); }
 function exportBackup() { const payload = { app: "liuzi-todo", version: 2, exportedAt: new Date().toISOString(), tasks }; const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `liuzi-todo-backup-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); }
 function importBackup(file) { const reader = new FileReader(); reader.addEventListener("load", () => { try { const parsed = JSON.parse(reader.result); const importedTasks = normalizeTasks(Array.isArray(parsed) ? parsed : parsed.tasks); if (!importedTasks.length) throw new Error("没有可导入的任务"); if (!confirm(`将导入 ${importedTasks.length} 项任务，并替换当前清单。继续吗？`)) return; tasks = importedTasks; saveTasks(); resetForm(); render(); } catch (error) { alert(`导入失败：${error.message}`); } finally { importFile.value = ""; } }); reader.readAsText(file, "utf-8"); }
+
+function syncTimePlaceholder() {
+  timeInput.closest(".datetime-field")?.classList.toggle("has-value", Boolean(timeInput.value));
+}
+
+function updateBeijingClock() {
+  beijingClock.textContent = `北京时间 ${new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(new Date())}`;
+}
+
+function requestNotificationPermission() {
+  if (!("Notification" in window) || Notification.permission !== "default") return;
+  Notification.requestPermission().catch(() => {});
+}
+
+function notifyTask(task) {
+  const message = `${task.text} · ${formatReminderTime(task.scheduledAt)}`;
+  launchBarrage(`刘子提醒你：${message}`);
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  new Notification("刘子的待办提醒", { body: message, icon: characterAssets[task.priority].happy });
+}
+
+function checkReminders() {
+  const now = Date.now();
+  let changed = false;
+  tasks.forEach((task) => {
+    if (!task.scheduledAt || task.status === "done") return;
+    const due = new Date(task.scheduledAt).getTime();
+    if (Number.isNaN(due)) return;
+    const reminderId = `${task.id}:${task.scheduledAt}`;
+    if (notifiedReminders.has(reminderId)) return;
+    if (now >= due - reminderLeadMs && now <= due + 60 * 1000) {
+      notifiedReminders.add(reminderId);
+      changed = true;
+      notifyTask(task);
+    }
+  });
+  if (changed) saveNotifiedReminders();
+}
+
+function dropCalendarPetals() {
+  if (!calendarPetalLayer) return;
+  for (let index = 0; index < 28; index += 1) {
+    const petal = document.createElement("span");
+    petal.textContent = index % 3 === 0 ? "♥" : "✿";
+    petal.style.left = `${8 + Math.random() * 78}%`;
+    petal.style.animationDelay = `${Math.random() * 0.45}s`;
+    petal.style.setProperty("--petal-x", `${Math.round((Math.random() - 0.5) * 120)}px`);
+    calendarPetalLayer.appendChild(petal);
+    window.setTimeout(() => petal.remove(), 2600);
+  }
+}
 
 function startWidgetMove(event, mode) {
   if (window.matchMedia("(max-width: 900px)").matches) return;
@@ -339,7 +415,7 @@ function updateWidgetMove(event) {
 }
 function endWidgetMove(event) { if (!activeMove) return; activeMove.widget.classList.remove("dragging"); try { event.target.releasePointerCapture(event.pointerId); } catch {} activeMove = null; }
 
-form.addEventListener("submit", (event) => { event.preventDefault(); const text = taskInput.value.trim(); if (!text) return; const payload = { text, priority: priorityInput.value, status: statusInput.value, scheduledAt: normalizeDateInput(timeInput.value) }; const completed = payload.status === "done"; if (editingId) { const before = tasks.find((task) => task.id === editingId); tasks = tasks.map((task) => task.id === editingId ? { ...task, ...payload, updatedAt: new Date().toISOString() } : task); if (before?.status !== "done" && completed) celebrate(editingId); } else { tasks.unshift({ id: createId(), ...payload, createdAt: new Date().toISOString(), updatedAt: "" }); if (completed) celebrate(); launchBarrage(); } saveTasks(); resetForm(); render(); });
+form.addEventListener("submit", (event) => { event.preventDefault(); requestNotificationPermission(); const text = taskInput.value.trim(); if (!text) return; const payload = { text, priority: priorityInput.value, status: statusInput.value, scheduledAt: normalizeDateInput(timeInput.value) }; const completed = payload.status === "done"; if (editingId) { const before = tasks.find((task) => task.id === editingId); tasks = tasks.map((task) => task.id === editingId ? { ...task, ...payload, updatedAt: new Date().toISOString() } : task); if (before?.status !== "done" && completed) celebrate(editingId); } else { tasks.unshift({ id: createId(), ...payload, createdAt: new Date().toISOString(), updatedAt: "" }); if (completed) celebrate(); launchBarrage(); } saveTasks(); resetForm(); render(); checkReminders(); });
 cancelEdit.addEventListener("click", resetForm);
 list.addEventListener("click", (event) => { const button = event.target.closest("button"); const item = event.target.closest(".task"); if (!button || !item) return; const task = tasks.find((entry) => entry.id === item.dataset.id); if (!task) return; if (button.dataset.action === "edit") startEdit(task); if (button.dataset.action === "priority") updateTask(task.id, { priority: cycleValue(task.priority, priorityOrder) }); if (button.dataset.action === "status") updateTask(task.id, { status: cycleValue(task.status, statusOrder) }); if (button.dataset.action === "toggle") updateTask(task.id, { status: task.status === "done" ? "not-started" : "done" }); if (button.dataset.action === "delete") { if (!confirm("确定删除这项任务吗？")) return; tasks = tasks.filter((entry) => entry.id !== task.id); saveTasks(); if (editingId === task.id) resetForm(); render(); } });
 calendar.addEventListener("click", (event) => { const button = event.target.closest(".calendar-task, .summary-task"); if (!button) return; const task = tasks.find((entry) => entry.id === button.dataset.id); if (task) startEdit(task); });
@@ -355,10 +431,16 @@ settingsOpen.addEventListener("click", () => settingsDialog.showModal());
       motion: settingMotion.checked,
       barrage: settingBarrage.checked,
       compact: settingCompact.checked,
+      theme: settings.theme,
     };
     saveSettings();
     applySettings();
   });
+});
+themeCycle.addEventListener("click", () => {
+  settings.theme = cycleValue(settings.theme, themeOrder);
+  saveSettings();
+  applySettings();
 });
 clearCompletedButton.addEventListener("click", () => {
   const doneCount = tasks.filter((task) => task.status === "done").length;
@@ -377,11 +459,18 @@ document.querySelector("#export-data").addEventListener("click", exportBackup);
 document.querySelector("#import-trigger").addEventListener("click", () => importFile.click());
 document.querySelector("#reset-layout").addEventListener("click", () => { writeMeta({ layoutVersion, widgetLayout: defaultLayout() }); applyLayout(); });
 importFile.addEventListener("change", () => { if (importFile.files[0]) importBackup(importFile.files[0]); });
+timeInput.addEventListener("input", syncTimePlaceholder);
+timeInput.addEventListener("change", syncTimePlaceholder);
+calendarTree.addEventListener("click", dropCalendarPetals);
 widgets.forEach((widget) => { widget.querySelector("[data-drag-handle]").addEventListener("pointerdown", (event) => { if (event.target.closest("button, select, input")) return; startWidgetMove(event, "drag"); }); widget.querySelector("[data-resize-grip]").addEventListener("pointerdown", (event) => startWidgetMove(event, "resize")); });
 window.addEventListener("pointermove", updateWidgetMove);
 window.addEventListener("pointerup", endWidgetMove);
 window.addEventListener("resize", applyLayout);
 
+updateBeijingClock();
+window.setInterval(updateBeijingClock, 1000);
+window.setInterval(checkReminders, 30000);
 render();
+checkReminders();
 
 
