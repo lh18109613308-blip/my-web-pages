@@ -3,6 +3,7 @@ const taskInput = document.querySelector("#task-input");
 const priorityInput = document.querySelector("#priority-input");
 const statusInput = document.querySelector("#status-input");
 const timeInput = document.querySelector("#time-input");
+const searchInput = document.querySelector("#search-input");
 const list = document.querySelector("#task-list");
 const count = document.querySelector("#task-count");
 const statusFilters = document.querySelectorAll("[data-status-filter]");
@@ -15,6 +16,18 @@ const calendarMode = document.querySelector("#calendar-mode");
 const calendarRange = document.querySelector("#calendar-range");
 const lastSaved = document.querySelector("#last-saved");
 const importFile = document.querySelector("#import-file");
+const newTaskButton = document.querySelector("#new-task");
+const settingsDialog = document.querySelector("#settings-dialog");
+const settingsOpen = document.querySelector("#settings-open");
+const settingDecor = document.querySelector("#setting-decor");
+const settingMotion = document.querySelector("#setting-motion");
+const settingBarrage = document.querySelector("#setting-barrage");
+const settingCompact = document.querySelector("#setting-compact");
+const clearCompletedButton = document.querySelector("#clear-completed");
+const sceneGirl = document.querySelector("#scene-girl");
+const sceneBear = document.querySelector("#scene-bear");
+const sceneKitty = document.querySelector("#scene-kitty");
+const sceneDora = document.querySelector("#scene-dora");
 const workspace = document.querySelector("#workspace");
 const mascot = document.querySelector("#mascot");
 const widgets = [...document.querySelectorAll("[data-widget]")];
@@ -24,25 +37,77 @@ const barrageMessages = ["刘子提醒你加油干！", "刘子提醒你注意�
 const storageKey = "todo-list.tasks.v2";
 const metaKey = "todo-list.meta.v2";
 const legacyKey = "todo-list.tasks";
-const layoutVersion = 3;
+const settingsKey = "todo-list.settings.v1";
+const layoutVersion = 4;
 const priorityOrder = ["high", "medium", "low"];
 const statusOrder = ["not-started", "in-progress", "done"];
 const priorityLabels = { high: "紧急", medium: "普通", low: "轻松" };
 const statusLabels = { "not-started": "未开始", "in-progress": "进行中", done: "已完成" };
 const weekDays = ["一", "二", "三", "四", "五", "六", "日"];
+const characterAssets = {
+  girl: {
+    idle: "assets/characters/sprites/girl-12.png",
+    cheer: "assets/characters/sprites/girl-11.png",
+    work: "assets/characters/sprites/girl-04.png",
+    rest: "assets/characters/sprites/girl-14.png",
+  },
+  medium: {
+    idle: "assets/characters/sprites/bear-01.png",
+    focus: "assets/characters/sprites/bear-07.png",
+    happy: "assets/characters/sprites/bear-13.png",
+    done: "assets/characters/sprites/bear-09.png",
+  },
+  high: {
+    idle: "assets/characters/sprites/pinkcat-05.png",
+    focus: "assets/characters/sprites/pinkcat-06.png",
+    happy: "assets/characters/sprites/pinkcat-15.png",
+    done: "assets/characters/sprites/pinkcat-09.png",
+  },
+  low: {
+    idle: "assets/characters/sprites/bluecat-01.png",
+    focus: "assets/characters/sprites/bluecat-07.png",
+    happy: "assets/characters/sprites/bluecat-11.png",
+    done: "assets/characters/sprites/bluecat-18.png",
+  },
+};
 
 let currentStatusFilter = "all";
 let currentPriorityFilter = "all";
+let currentSearch = "";
 let editingId = null;
 let anchorDate = new Date();
 let tasks = loadTasks();
 let activeMove = null;
+let settings = loadSettings();
 
 function loadTasks() {
   const saved = localStorage.getItem(storageKey);
   if (saved) return normalizeTasks(JSON.parse(saved));
   const legacy = JSON.parse(localStorage.getItem(legacyKey) || "[]");
   return normalizeTasks(legacy.map((task) => ({ id: task.id || createId(), text: task.text, priority: "medium", status: task.done ? "done" : "not-started", scheduledAt: "", createdAt: new Date().toISOString() })));
+}
+
+function loadSettings() {
+  const defaults = { decor: true, motion: true, barrage: true, compact: false };
+  try {
+    return { ...defaults, ...JSON.parse(localStorage.getItem(settingsKey) || "{}") };
+  } catch {
+    return defaults;
+  }
+}
+
+function saveSettings() {
+  localStorage.setItem(settingsKey, JSON.stringify(settings));
+}
+
+function applySettings() {
+  document.body.classList.toggle("hide-decor", !settings.decor);
+  document.body.classList.toggle("reduce-character-motion", !settings.motion);
+  document.body.classList.toggle("compact-table", settings.compact);
+  settingDecor.checked = settings.decor;
+  settingMotion.checked = settings.motion;
+  settingBarrage.checked = settings.barrage;
+  settingCompact.checked = settings.compact;
 }
 
 function normalizeTasks(input) {
@@ -69,16 +134,21 @@ function saveTasks() { localStorage.setItem(storageKey, JSON.stringify(tasks)); 
 function renderSavedState() {
   const meta = readMeta();
   lastSaved.textContent = meta.lastSavedAt ? `上次保存：${formatDateTime(meta.lastSavedAt)}` : tasks.length ? "已从本机读取，尚未再次保存" : "尚未保存";
+  document.querySelector(".backup-actions")?.setAttribute("data-last", meta.lastSavedAt ? formatDateTime(meta.lastSavedAt) : "尚未保存");
 }
 
 function defaultLayout() {
   const width = Math.max(workspace.clientWidth, 980);
-  const calendarWidth = Math.round(width * 0.36);
+  const leftWidth = Math.max(320, Math.round(width * 0.28));
+  const rightStart = leftWidth + 44;
+  const rightWidth = width - rightStart - 16;
+  const sceneWidth = Math.round(rightWidth * 0.62);
   return {
-    calendar: { x: 16, y: 16, w: calendarWidth, h: 560 },
-    board: { x: calendarWidth + 32, y: 16, w: width - calendarWidth - 48, h: 392 },
-    composer: { x: calendarWidth + 32, y: 428, w: Math.round((width - calendarWidth - 64) * 0.6), h: 270 },
-    backup: { x: calendarWidth + 48 + Math.round((width - calendarWidth - 64) * 0.6), y: 428, w: Math.round((width - calendarWidth - 64) * 0.4), h: 190 },
+    calendar: { x: 16, y: 16, w: leftWidth, h: 404 },
+    backup: { x: 16, y: 438, w: leftWidth, h: 350 },
+    board: { x: rightStart, y: 16, w: rightWidth, h: 390 },
+    scene: { x: rightStart, y: 422, w: sceneWidth, h: 366 },
+    composer: { x: rightStart + sceneWidth + 16, y: 422, w: rightWidth - sceneWidth - 16, h: 366 },
   };
 }
 
@@ -124,13 +194,20 @@ function startOfMonth(date) { return new Date(date.getFullYear(), date.getMonth(
 function addDays(date, amount) { const next = new Date(date); next.setDate(next.getDate() + amount); return next; }
 function addMonths(date, amount) { return new Date(date.getFullYear(), date.getMonth() + amount, 1); }
 function sameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+function isToday(iso) { return sameDay(new Date(iso), new Date()); }
 
 function visibleTasks() {
-  return tasks.filter((task) => (currentStatusFilter === "all" || task.status === currentStatusFilter) && (currentPriorityFilter === "all" || task.priority === currentPriorityFilter));
+  const keyword = currentSearch.trim().toLowerCase();
+  return tasks.filter((task) => {
+    const matchesStatus = currentStatusFilter === "all" || task.status === currentStatusFilter;
+    const matchesPriority = currentPriorityFilter === "all" || task.priority === currentPriorityFilter;
+    const matchesSearch = !keyword || task.text.toLowerCase().includes(keyword);
+    return matchesStatus && matchesPriority && matchesSearch;
+  });
 }
 
 function resetForm() {
-  editingId = null; form.reset(); priorityInput.value = "medium"; statusInput.value = "not-started"; formTitle.textContent = "添加任务"; submitButton.textContent = "添加到清单"; cancelEdit.classList.add("hidden");
+  editingId = null; form.reset(); priorityInput.value = "medium"; statusInput.value = "not-started"; formTitle.textContent = "编辑任务"; submitButton.textContent = "保存到清单"; cancelEdit.classList.add("hidden");
 }
 
 function renderTasks() {
@@ -145,7 +222,8 @@ function renderTasks() {
     const item = document.createElement("li");
     item.className = `task ${task.status === "done" ? "done" : ""}`;
     item.dataset.id = task.id;
-    item.innerHTML = `<div class="task-avatar ${task.priority}" aria-hidden="true"></div><div class="task-main"><p class="task-title">${escapeHtml(task.text)}</p><div class="badges"><button class="badge tag-button priority-${task.priority}" type="button" data-action="priority">${priorityLabels[task.priority]}</button><button class="badge tag-button status-${task.status}" type="button" data-action="status">${statusLabels[task.status]}</button><span class="badge time-badge">${task.scheduledAt ? formatDateTime(task.scheduledAt) : "未安排时间"}</span></div></div><div class="task-actions"><button class="icon-btn" type="button" data-action="edit">编辑</button><button class="icon-btn danger" type="button" data-action="delete">删除</button></div>`;
+    const avatarState = task.status === "done" ? "done" : task.status === "in-progress" ? "focus" : "idle";
+    item.innerHTML = `<button class="task-check" type="button" data-action="toggle" aria-label="切换完成状态">${task.status === "done" ? "✓" : ""}</button><div class="task-main"><img class="task-avatar-img ${task.priority}" src="${characterAssets[task.priority][avatarState]}" alt="${priorityLabels[task.priority]}任务角色" /><p class="task-title">${escapeHtml(task.text)}</p></div><button class="badge tag-button priority-${task.priority}" type="button" data-action="priority">${priorityLabels[task.priority]}</button><button class="badge tag-button status-${task.status}" type="button" data-action="status">${statusLabels[task.status]}</button><span class="table-time ${task.scheduledAt && isToday(task.scheduledAt) ? "today-time" : ""}">${task.scheduledAt ? formatDateTime(task.scheduledAt) : "未安排"}</span><div class="task-actions"><button class="icon-btn" type="button" data-action="edit" aria-label="编辑">✎</button><button class="icon-btn danger" type="button" data-action="delete" aria-label="删除">⌫</button></div>`;
     list.appendChild(item);
   });
 }
@@ -190,26 +268,41 @@ function getCalendarRangeText(sections, mode) {
   return `${formatMonthTitle(sections[0].start)} · 已安排时间的任务`;
 }
 
-function render() { renderSavedState(); applyLayout(); renderTasks(); renderCalendar(); }
+function render() { applySettings(); renderSavedState(); applyLayout(); renderTasks(); renderCalendar(); }
 function escapeHtml(value) { return String(value).replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]); }
 function startEdit(task) { editingId = task.id; taskInput.value = task.text; priorityInput.value = task.priority; statusInput.value = task.status; timeInput.value = toInputValue(task.scheduledAt); formTitle.textContent = "编辑任务"; submitButton.textContent = "保存修改"; cancelEdit.classList.remove("hidden"); taskInput.focus(); }
 function cycleValue(value, options) { return options[(options.indexOf(value) + 1) % options.length]; }
 function celebrate(taskId = null) {
+  if (!settings.motion) return;
   mascot.classList.remove("celebrate");
   void mascot.offsetWidth;
   mascot.classList.add("celebrate");
+  sceneGirl.src = characterAssets.girl.cheer;
+  sceneBear.src = characterAssets.medium.happy;
+  sceneKitty.src = characterAssets.high.happy;
+  sceneDora.src = characterAssets.low.happy;
   if (taskId) {
-    const avatar = document.querySelector(`.task[data-id="${taskId}"] .task-avatar`);
+    const avatar = document.querySelector(`.task[data-id="${taskId}"] .task-avatar-img`);
     if (avatar) {
       avatar.classList.remove("party");
+      const task = tasks.find((entry) => entry.id === taskId);
+      if (task) avatar.src = characterAssets[task.priority].happy;
       void avatar.offsetWidth;
       avatar.classList.add("party");
     }
   }
-  window.setTimeout(() => mascot.classList.remove("celebrate"), 950);
+  window.setTimeout(() => {
+    mascot.classList.remove("celebrate");
+    sceneGirl.src = characterAssets.girl.idle;
+    sceneBear.src = characterAssets.medium.focus;
+    sceneKitty.src = characterAssets.high.focus;
+    sceneDora.src = characterAssets.low.focus;
+    renderTasks();
+  }, 1200);
 }
 
 function launchBarrage() {
+  if (!settings.barrage) return;
   const message = barrageMessages[Math.floor(Math.random() * barrageMessages.length)];
   const item = document.createElement("div");
   item.className = "barrage";
@@ -248,10 +341,34 @@ function endWidgetMove(event) { if (!activeMove) return; activeMove.widget.class
 
 form.addEventListener("submit", (event) => { event.preventDefault(); const text = taskInput.value.trim(); if (!text) return; const payload = { text, priority: priorityInput.value, status: statusInput.value, scheduledAt: normalizeDateInput(timeInput.value) }; const completed = payload.status === "done"; if (editingId) { const before = tasks.find((task) => task.id === editingId); tasks = tasks.map((task) => task.id === editingId ? { ...task, ...payload, updatedAt: new Date().toISOString() } : task); if (before?.status !== "done" && completed) celebrate(editingId); } else { tasks.unshift({ id: createId(), ...payload, createdAt: new Date().toISOString(), updatedAt: "" }); if (completed) celebrate(); launchBarrage(); } saveTasks(); resetForm(); render(); });
 cancelEdit.addEventListener("click", resetForm);
-list.addEventListener("click", (event) => { const button = event.target.closest("button"); const item = event.target.closest(".task"); if (!button || !item) return; const task = tasks.find((entry) => entry.id === item.dataset.id); if (!task) return; if (button.dataset.action === "edit") startEdit(task); if (button.dataset.action === "priority") updateTask(task.id, { priority: cycleValue(task.priority, priorityOrder) }); if (button.dataset.action === "status") updateTask(task.id, { status: cycleValue(task.status, statusOrder) }); if (button.dataset.action === "delete") { if (!confirm("确定删除这项任务吗？")) return; tasks = tasks.filter((entry) => entry.id !== task.id); saveTasks(); if (editingId === task.id) resetForm(); render(); } });
+list.addEventListener("click", (event) => { const button = event.target.closest("button"); const item = event.target.closest(".task"); if (!button || !item) return; const task = tasks.find((entry) => entry.id === item.dataset.id); if (!task) return; if (button.dataset.action === "edit") startEdit(task); if (button.dataset.action === "priority") updateTask(task.id, { priority: cycleValue(task.priority, priorityOrder) }); if (button.dataset.action === "status") updateTask(task.id, { status: cycleValue(task.status, statusOrder) }); if (button.dataset.action === "toggle") updateTask(task.id, { status: task.status === "done" ? "not-started" : "done" }); if (button.dataset.action === "delete") { if (!confirm("确定删除这项任务吗？")) return; tasks = tasks.filter((entry) => entry.id !== task.id); saveTasks(); if (editingId === task.id) resetForm(); render(); } });
 calendar.addEventListener("click", (event) => { const button = event.target.closest(".calendar-task, .summary-task"); if (!button) return; const task = tasks.find((entry) => entry.id === button.dataset.id); if (task) startEdit(task); });
 statusFilters.forEach((button) => button.addEventListener("click", () => { currentStatusFilter = button.dataset.statusFilter; statusFilters.forEach((item) => item.classList.toggle("active", item === button)); renderTasks(); }));
 priorityFilters.forEach((button) => button.addEventListener("click", () => { currentPriorityFilter = button.dataset.priorityFilter; priorityFilters.forEach((item) => item.classList.toggle("active", item === button)); renderTasks(); }));
+searchInput.addEventListener("input", () => { currentSearch = searchInput.value; renderTasks(); });
+newTaskButton.addEventListener("click", () => { resetForm(); taskInput.focus(); });
+settingsOpen.addEventListener("click", () => settingsDialog.showModal());
+[settingDecor, settingMotion, settingBarrage, settingCompact].forEach((input) => {
+  input.addEventListener("change", () => {
+    settings = {
+      decor: settingDecor.checked,
+      motion: settingMotion.checked,
+      barrage: settingBarrage.checked,
+      compact: settingCompact.checked,
+    };
+    saveSettings();
+    applySettings();
+  });
+});
+clearCompletedButton.addEventListener("click", () => {
+  const doneCount = tasks.filter((task) => task.status === "done").length;
+  if (!doneCount) return;
+  if (!confirm(`确定清理 ${doneCount} 项已完成任务吗？`)) return;
+  tasks = tasks.filter((task) => task.status !== "done");
+  saveTasks();
+  resetForm();
+  render();
+});
 calendarMode.addEventListener("change", () => { anchorDate = new Date(); renderCalendar(); });
 document.querySelector("#prev-period").addEventListener("click", () => shiftCalendar(-1));
 document.querySelector("#next-period").addEventListener("click", () => shiftCalendar(1));

@@ -4,29 +4,47 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>刘子的待办清单</title>
-    <link rel="stylesheet" href="styles.css?v=liuzi-pink-20260626-2" />
+    <link rel="stylesheet" href="styles.css?v=liuzi-assets-20260626-1" />
   </head>
   <body>
     <main class="app" aria-label="刘子的待办清单">
-      <section class="hero">
-        <div class="hero-copy">
+      <section class="app-topbar" aria-label="页面标题栏">
+        <div class="brand">
+          <span class="brand-icon" aria-hidden="true">▣</span>
           <h1>刘子的待办清单</h1>
-          <p class="subtitle">粉色能量补给站：小女孩和三个任务伙伴一起陪你把事情做完。</p>
+          <span class="petal" aria-hidden="true">✿</span>
         </div>
-        <div class="girl-stage" id="mascot" aria-label="刘子的卡通小女孩和任务伙伴">
-          <div class="confetti"></div>
-          <div class="heart-orbit"></div>
-          <div class="pixel-girl">
-            <div class="girl-hair"></div>
-            <div class="girl-face"><span></span></div>
-            <div class="girl-body"></div>
-          </div>
-          <div class="hero-buddy buddy-kitty" title="紧急任务伙伴"></div>
-          <div class="hero-buddy buddy-bear" title="普通任务伙伴"></div>
-          <div class="hero-buddy buddy-dora" title="轻松任务伙伴"></div>
+        <div class="top-cheer">💗 刘子提醒你加油干！</div>
+        <div class="top-actions" aria-label="快捷按钮">
+          <button class="round-btn" type="button" aria-label="通知">♡<span>3</span></button>
+          <button class="round-btn" id="settings-open" type="button" aria-label="设置">⚙</button>
+          <img class="mini-girl-img" src="assets/characters/sprites/girl-12.png" alt="小女孩头像" />
         </div>
       </section>
       <div class="barrage-layer" id="barrage-layer" aria-live="polite"></div>
+      <div class="float-decor" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
+
+      <dialog class="settings-dialog" id="settings-dialog" aria-labelledby="settings-title">
+        <form method="dialog" class="settings-card">
+          <div class="settings-head">
+            <div>
+              <h2 id="settings-title">基础设置</h2>
+              <p>调整页面动效、布局和提醒显示。</p>
+            </div>
+            <button class="round-btn" value="close" type="submit" aria-label="关闭设置">×</button>
+          </div>
+          <label class="setting-row"><span>显示粉色花瓣和小爱心</span><input id="setting-decor" type="checkbox" checked /></label>
+          <label class="setting-row"><span>完成任务时播放角色庆祝动画</span><input id="setting-motion" type="checkbox" checked /></label>
+          <label class="setting-row"><span>添加任务时显示刘子弹幕提醒</span><input id="setting-barrage" type="checkbox" checked /></label>
+          <label class="setting-row"><span>紧凑任务表格</span><input id="setting-compact" type="checkbox" /></label>
+          <div class="settings-actions">
+            <button class="ghost" id="clear-completed" type="button">清理已完成</button>
+            <button class="primary" value="close" type="submit">保存设置</button>
+          </div>
+        </form>
+      </dialog>
 
       <section class="layout-control panel" aria-label="布局调整">
         <button class="ghost" id="reset-layout" type="button">恢复默认布局</button>
@@ -36,8 +54,12 @@
       <section class="workspace" id="workspace" aria-label="自定义工作台">
         <section class="panel widget board" data-widget="board">
           <div class="widget-header board-header" data-drag-handle>
-            <div><h2>任务列表</h2><p id="task-count">0 项任务</p></div>
+            <div><h2>任务清单</h2><p id="task-count">0 项任务</p></div>
             <div class="filter-stack">
+              <div class="board-tools">
+                <label class="search-box" aria-label="搜索任务"><input id="search-input" type="search" placeholder="搜索任务..." /></label>
+                <button class="primary small-primary" id="new-task" type="button">+ 新建任务</button>
+              </div>
               <div class="filters" aria-label="状态筛选">
                 <button class="filter active" type="button" data-status-filter="all">全部</button>
                 <button class="filter" type="button" data-status-filter="not-started">未开始</button>
@@ -51,6 +73,9 @@
                 <button class="filter" type="button" data-priority-filter="low">轻松</button>
               </div>
             </div>
+          </div>
+          <div class="task-table-head" aria-hidden="true">
+            <span></span><span>任务名称</span><span>优先级</span><span>状态</span><span>截止日期</span><span>操作</span>
           </div>
           <ul class="task-list" id="task-list" aria-live="polite"></ul>
           <div class="resize-grip" data-resize-grip></div>
@@ -77,9 +102,29 @@
           <div class="resize-grip" data-resize-grip></div>
         </section>
 
+        <section class="panel widget mascot-panel" data-widget="scene">
+          <div class="widget-header panel-title scene-title" data-drag-handle>
+            <div><h2>今日能量站</h2><p>小女孩和任务伙伴会陪你完成清单</p></div>
+          </div>
+          <div class="desk-scene" id="mascot" aria-label="小女孩和任务伙伴互动区">
+            <div class="confetti"></div>
+            <img class="scene-character scene-girl-img" id="scene-girl" src="assets/characters/sprites/girl-12.png" alt="小女孩" />
+            <div class="speech main-speech">💗 刘子提醒你加油干！</div>
+            <div class="scene-buddy buddy-bear"><img id="scene-bear" src="assets/characters/sprites/bear-07.png" alt="普通任务小熊" /><span>普通</span></div>
+            <div class="scene-buddy buddy-kitty"><img id="scene-kitty" src="assets/characters/sprites/pinkcat-06.png" alt="紧急任务粉色猫" /><span>紧急</span></div>
+            <div class="scene-buddy buddy-dora"><img id="scene-dora" src="assets/characters/sprites/bluecat-07.png" alt="轻松任务蓝色猫" /><span>轻松</span></div>
+            <div class="mini-messages">
+              <p><img class="tiny-face" src="assets/characters/sprites/bear-01.png" alt="" />今天也要元气满满哦 ~ ✨</p>
+              <p><img class="tiny-face" src="assets/characters/sprites/bluecat-01.png" alt="" />加油加油！你最棒啦！💪</p>
+              <p><img class="tiny-face" src="assets/characters/sprites/pinkcat-01.png" alt="" />任务完成好开心！🎉</p>
+            </div>
+          </div>
+          <div class="resize-grip" data-resize-grip></div>
+        </section>
+
         <aside class="panel widget composer" data-widget="composer">
           <div class="widget-header panel-title" data-drag-handle>
-            <h2 id="form-title">添加任务</h2>
+            <h2 id="form-title">编辑任务</h2>
             <button class="ghost hidden" id="cancel-edit" type="button">取消编辑</button>
           </div>
           <form id="task-form" class="task-form">
@@ -107,7 +152,7 @@
         </section>
       </section>
     </main>
-    <script src="script.js?v=liuzi-pink-20260626-2"></script>
+    <script src="script.js?v=liuzi-assets-20260626-1"></script>
   </body>
 </html>
 
